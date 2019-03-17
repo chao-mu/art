@@ -7,9 +7,9 @@ then multiplied with the coordinates then used to do a texture fetch.
 
 ## Preview
 
-![preview 1](preview-1.png?raw=true)
-
 ![preview 2](preview-2.png?raw=true)
+
+![preview 1](preview-1.png?raw=true)
 
 ## Sources
 

@@ -3,6 +3,8 @@
 A collection of small art projects in separate code bases. At some point I may
 put common components in a library, but for now I'd like to keep them separate.
 
+[https://hackpoetic.com](https://hackpoetic.com)
+
 ## Index
 
 [00001](00001) - Melting/distorting skull and cross bones with RGB channels having separate velocities (GLSL/C++)
