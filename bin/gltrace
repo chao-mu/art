@@ -1,0 +1,8 @@
+#!/bin/bash
+
+if [ "$#" -lt 2 ]; then
+    echo "Usage: `basename $0` output.trace <some command and args>"
+    exit
+fi
+
+apitrace trace --api gl --output $1 ${@:2}

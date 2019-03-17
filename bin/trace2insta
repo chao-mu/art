@@ -1,0 +1,25 @@
+#!/bin/bash
+
+if [ "$#" -ne 2 ]; then
+    echo "Usage: `basename $0` in.trace out.mp4"
+    exit
+fi
+
+IN=$1
+OUT=$2
+
+if [ ! -f $IN ]; then
+    echo "Trace file not found!"
+    exit
+fi
+
+apitrace dump-images -o - $IN \
+    | ffmpeg -r 30 -f image2pipe -vcodec ppm -i pipe: \
+    -c:v libx264 \
+    -preset slow \
+    -crf 18 \
+    -profile:v baseline \
+    -level 3.0 \
+    -movflags +faststart \
+    -pix_fmt yuv420p \
+    $OUT
