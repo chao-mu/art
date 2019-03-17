@@ -1,9 +1,6 @@
 # art
 
-A collection of small art projects in separate code bases. At some point I may
-put common components in a library, but for now I'd like to keep them separate.
-
-[https://hackpoetic.com](https://hackpoetic.com)
+A collection of small art projects in separate code bases.
 
 ## Index
 
@@ -44,3 +41,8 @@ However, this is quite low quality. bin/trace2insta will convert trace files to 
 ```
 bin/trace-to-instagram.sh input.trace output.mp4
 ```
+
+## Personal Website
+
+[hackpoetic.com](https://www.hackpoetic.com)
+
