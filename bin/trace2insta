@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 if [ "$#" -ne 2 ]; then
     echo "Usage: `basename $0` in.trace out.mp4"
     exit
@@ -13,8 +15,10 @@ if [ ! -f $IN ]; then
     exit
 fi
 
-apitrace dump-images -o - $IN \
-    | ffmpeg -r 30 -f image2pipe -vcodec ppm -i pipe: \
+# Note, we skip the first frame (i.e. -ss 0.033) because it's blank
+apitrace dump-images -o - $IN |
+    ffmpeg -r 30 -f image2pipe -vcodec ppm -i pipe: \
+    -ss 0.033 \
     -c:v libx264 \
     -preset slow \
     -crf 18 \
