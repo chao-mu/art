@@ -1,6 +1,7 @@
 // STL
 #include <iostream>
 #include <unordered_set>
+#include <climits>
 
 // OpenGL
 #include <GL/glew.h>
@@ -16,12 +17,11 @@
 #include "ShaderProgram.h"
 #include "MathUtil.h"
 
+// Texture units
 #define IMG_UNIT 0
 #define IMG_UNIT_GL GL_TEXTURE0
-
 #define LAST_OUTPUT_UNIT 1
 #define LAST_OUTPUT_UNIT_GL GL_TEXTURE1
-
 
 // For ping pong rendering
 #define SRC 0
@@ -86,6 +86,7 @@ int main(int argc, const char** argv) {
     TCLAP::ValueArg<std::string> vert_arg("", "vert", "path to vertex shader", false, "vert.glsl", "string", cmd);
     TCLAP::ValueArg<std::string> frag_arg("", "frag", "path to fragment shader", false, "frag.glsl", "string", cmd);
     TCLAP::ValueArg<std::string> img_arg("i", "img", "texture image path", false, "", "string", cmd);
+    TCLAP::ValueArg<int> height_arg("", "height", "window height (width will be calculated automatically)", false, 720, "int", cmd);
 
     // Parse command line arguments
     try {
@@ -102,6 +103,7 @@ int main(int argc, const char** argv) {
         std::cerr << "error: unable to load image " << img_path << std::endl;
         return 1;
     }
+    cv::Size resolution = image.size();
 
     // Set GLFW error callback
     glfwSetErrorCallback(onError);
@@ -118,8 +120,10 @@ int main(int argc, const char** argv) {
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    // Create window
-    GLFWwindow* window = glfwCreateWindow(1080, 720, "Awesome Art", NULL, NULL);
+    float height = static_cast<float>(height_arg.getValue());
+    float ratio = static_cast<float>(resolution.height) / height;
+    float width = static_cast<float>(resolution.width) / ratio;
+    GLFWwindow* window = glfwCreateWindow(static_cast<int>(width), static_cast<int>(height), "Awesome Art", NULL, NULL);
     if (!window) {
         glfwTerminate();
         std::cerr << "Failed to create window" << std::endl;
@@ -141,7 +145,6 @@ int main(int argc, const char** argv) {
 
     // Load image into texture
     GLuint image_id = loadImage(image, IMG_UNIT_GL);
-    cv::Size resolution = image.size();
 
     // Configure shader program. We will check for errors once in our run loop
     auto program = std::make_unique<ShaderProgram>();
@@ -205,8 +208,14 @@ int main(int argc, const char** argv) {
     std::string last_err = "";
     std::unordered_set<std::string> last_warnings;
     bool first_pass = true;
+    unsigned int iter = 0;
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
+
+        // We will be treating this like an int when passing to shader
+        iter = (iter + 1) % INT_MAX;
+
+        double time = glfwGetTime();
 
         // Reload shaders if needed and report any errors
         std::string err = program->update().value_or("");
@@ -234,17 +243,24 @@ int main(int argc, const char** argv) {
             glUniform1i(id, 0);
         });
 
-        program->setUniform("iResolution", [program_id, resolution](GLint& id) {
-            glProgramUniform2f(
-                program_id,
+        program->setUniform("iTime", [time](GLint& id) {
+            glUniform1f(id, static_cast<float>(time));
+        });
+
+        program->setUniform("iResolution", [resolution](GLint& id) {
+            glUniform2f(
                 id,
                 static_cast<float>(resolution.width),
                 static_cast<float>(resolution.height)
             );
         });
 
-        program->setUniform("firstPass", [program_id, first_pass](GLint& id) {
-            glProgramUniform1i(program_id, id, first_pass);
+        program->setUniform("frame", [iter](GLint& id) {
+            glUniform1i(id, static_cast<int>(iter));
+        });
+
+        program->setUniform("firstPass", [first_pass](GLint& id) {
+            glUniform1i(id, first_pass);
         });
 
         program->setUniform("lastOut", [output_texs](GLint& id) {
