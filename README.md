@@ -1,10 +1,12 @@
 # art
 
-A collection of small art projects in separate code bases.
+A collection of small art projects and utilities for running them.
 
 ## Index
 
 [00001](00001) - Melting/distorting skull and cross bones with RGB channels having separate velocities (GLSL/C++)
+
+[img-frag](img-frag) - Utility for running many of these pieces of art. Simply runs a fragment shader against an image (with automatic reloading of shaders.
 
 ## Rendering
 

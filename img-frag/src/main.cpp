@@ -30,7 +30,7 @@
 // Load an image, return texture id
 GLuint loadImage(cv::Mat& frame, GLenum texture_unit) {
     cv::cvtColor(frame, frame, cv::COLOR_BGR2RGB);
-    flip(frame, frame, -1);
+    flip(frame, frame, 0);
 
     // Store the previous active texture so we can revert to it
     GLint prev_active = 0;

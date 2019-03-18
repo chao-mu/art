@@ -1,9 +1,14 @@
 # 00001
 
 I am recursively modifying an image with a fragment shader (see [frag.glsl](frag.glsl)).
-
 For this modification I am using a vector field generated from perlin noise. Each vector is
-then multiplied with the coordinates then used to do a texture fetch.
+then multiplied with the current coordinates to use in a texture fetch.
+
+To run this, build img-frag in the root of this repository and run (within this directory):
+
+```
+img-frag -i skull-and-crossbones.jpg
+```
 
 ## Preview
 
