@@ -11,7 +11,7 @@ set(ROOT_DIR "${CMAKE_SOURCE_DIR}/..")
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${ROOT_DIR}/cmake/Modules/")
 
 # My stuff
-add_executable(${PROJECT_NAME} src/main.cpp src/ShaderProgram.cpp src/MathUtil.cpp)
+add_executable(${PROJECT_NAME} src/main.cpp src/ShaderProgram.cpp src/MathUtil.cpp src/Webcam.cpp)
 target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_compile_options(${PROJECT_NAME} PRIVATE "-Wextra" "-Werror" "-Wall" "-pedantic-errors" "-Wconversion")
 

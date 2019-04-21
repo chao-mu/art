@@ -1,4 +1,4 @@
-// STL
+// dSTL
 #include <iostream>
 #include <unordered_set>
 #include <climits>
@@ -16,6 +16,8 @@
 // Ours
 #include "ShaderProgram.h"
 #include "MathUtil.h"
+#include "Webcam.h"
+#include "types.h"
 
 // Texture units
 #define IMG_UNIT 0
@@ -28,16 +30,10 @@
 #define DEST 1
 
 // Load an image, return texture id
-GLuint loadImage(cv::Mat& frame, GLenum texture_unit) {
-    cv::cvtColor(frame, frame, cv::COLOR_BGR2RGB);
-    flip(frame, frame, 0);
-
+void populateTexture(GLenum texture_unit, GLuint tex_id, cv::Mat& frame) {
     // Store the previous active texture so we can revert to it
     GLint prev_active = 0;
     glGetIntegeri_v(GL_ACTIVE_TEXTURE, 1, &prev_active);
-
-    GLuint tex_id;
-    glGenTextures(1, &tex_id);
 
     cv::Size size = frame.size();
 
@@ -52,8 +48,6 @@ GLuint loadImage(cv::Mat& frame, GLenum texture_unit) {
 
     // Restore active texture
     glActiveTexture(prev_active);
-
-    return tex_id;
 }
 
 // GLFW error callback
@@ -87,6 +81,7 @@ int main(int argc, const char** argv) {
     TCLAP::ValueArg<std::string> frag_arg("", "frag", "path to fragment shader", false, "frag.glsl", "string", cmd);
     TCLAP::ValueArg<std::string> img_arg("i", "img", "texture image path", false, "", "string", cmd);
     TCLAP::ValueArg<int> height_arg("", "height", "window height (width will be calculated automatically)", false, 720, "int", cmd);
+    TCLAP::ValueArg<int> cam_arg("c", "camera", "camera device id", false, 0, "int", cmd);
 
     // Parse command line arguments
     try {
@@ -97,12 +92,28 @@ int main(int argc, const char** argv) {
     }
 
     // Load the image provided to us on the command line
-    const std::string img_path = img_arg.getValue();
-    cv::Mat image = cv::imread(img_path);
-    if (image.empty()) {
-        std::cerr << "error: unable to load image " << img_path << std::endl;
-        return 1;
+    cv::Mat image;
+    std::unique_ptr<Webcam> cam = nullptr;
+    if (cam_arg.isSet()) {
+        cam = std::make_unique<Webcam>(cam_arg.getValue());
+        Error err = cam->start();
+        if (!err.empty()) {
+            std::cerr << "error: failed to load webcam: " << err << std::endl;
+            return 1;
+        }
+        cam->read(image);
+    } else {
+        const std::string img_path = img_arg.getValue();
+        image = cv::imread(img_path);
+        if (image.empty()) {
+            std::cerr << "error: unable to load image " << img_path << std::endl;
+            return 1;
+        }
+
+        cv::cvtColor(image, image, cv::COLOR_BGR2RGB);
+        flip(image, image, 0);
     }
+
     cv::Size resolution = image.size();
 
     // Set GLFW error callback
@@ -143,8 +154,10 @@ int main(int argc, const char** argv) {
     glewExperimental = GL_TRUE;
     glewInit();
 
-    // Load image into texture
-    GLuint image_id = loadImage(image, IMG_UNIT_GL);
+    // initialize first frame
+    GLuint image_id;
+    glGenTextures(1, &image_id);
+    populateTexture(IMG_UNIT_GL, image_id, image);
 
     // Configure shader program. We will check for errors once in our run loop
     auto program = std::make_unique<ShaderProgram>();
@@ -236,6 +249,13 @@ int main(int argc, const char** argv) {
         // Load our shader program
         GLuint program_id = program->getProgram();
         glUseProgram(program_id);
+
+        // Load the webcam frame if we're using a webcam
+        if (cam != nullptr) {
+            if (cam->read(image)) {
+                populateTexture(IMG_UNIT_GL, image_id, image);
+            }
+        }
 
         program->setUniform("img0", [image_id](GLint& id) {
             glActiveTexture(IMG_UNIT_GL);
