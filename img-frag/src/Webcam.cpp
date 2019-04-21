@@ -66,5 +66,7 @@ int Webcam::getHeight() {
 
 void Webcam::stop() {
     running_ = false;
-    thread_.join();
+    if (thread_.joinable()) {
+        thread_.join();
+    }
 }
