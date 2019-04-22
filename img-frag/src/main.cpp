@@ -81,7 +81,7 @@ int main(int argc, const char** argv) {
     TCLAP::ValueArg<std::string> frag_arg("", "frag", "path to fragment shader", false, "frag.glsl", "string", cmd);
     TCLAP::ValueArg<std::string> img_arg("i", "img", "texture image path", false, "", "string", cmd);
     TCLAP::ValueArg<int> height_arg("", "height", "window height (width will be calculated automatically)", false, 720, "int", cmd);
-    TCLAP::ValueArg<int> cam_arg("c", "camera", "camera device id", false, 0, "int", cmd);
+    TCLAP::ValueArg<int> cam_arg("c", "cam", "camera device id", false, 0, "int", cmd);
 
     // Parse command line arguments
     try {
