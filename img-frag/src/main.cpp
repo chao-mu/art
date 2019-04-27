@@ -87,6 +87,7 @@ int main(int argc, const char** argv) {
     TCLAP::ValueArg<int> height_arg("", "height", "window height (width will be calculated automatically)", false, 720, "int", cmd);
     TCLAP::ValueArg<int> cam_arg("c", "cam", "camera device id", false, 0, "int", cmd);
     TCLAP::ValueArg<int> pause_arg("p", "pause", "miliseconds to pause between frames", false, 0, "int", cmd);
+    TCLAP::ValueArg<int> stages_arg("s", "stages", "number of stages", false, 1, "int", cmd);
 
     // Parse command line arguments
     try {
@@ -246,6 +247,7 @@ int main(int argc, const char** argv) {
     std::unordered_set<std::string> last_warnings;
     bool first_pass = true;
     unsigned int iter = 0;
+    int stages = stages_arg.getValue();
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
 
@@ -265,93 +267,110 @@ int main(int argc, const char** argv) {
         }
         last_err = err;
 
-        // Use our FBO and destination buffer.
-        // We'll write to this before rendering to screen.
-        glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-        glDrawBuffer(draw_bufs[DEST]);
+        for (int i=0; i < stages; i++) {
+            program->setUniform("stage", [i](GLint& id) {
+                glUniform1i(id, i);
+            });
 
-        // Load our shader program
-        GLuint program_id = program->getProgram();
-        glUseProgram(program_id);
+            program->setUniform("lastStage", [stages](GLint& id) {
+                glUniform1i(id, stages - 1);
+            });
 
-        // Load the webcam frame if we're using a webcam
-        if (cam != nullptr) {
-            if (cam->read(cam_image)) {
-                populateTexture(CAM_UNIT_GL, cam_image_id, cam_image);
+            // Use our FBO and destination buffer.
+            // We'll write to this before rendering to screen.
+            glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+            glDrawBuffer(draw_bufs[DEST]);
+
+            // Load our shader program
+            GLuint program_id = program->getProgram();
+            glUseProgram(program_id);
+
+            // Load the webcam frame if we're using a webcam
+            if (cam != nullptr) {
+                if (cam->read(cam_image)) {
+                    populateTexture(CAM_UNIT_GL, cam_image_id, cam_image);
+                }
+
+                program->setUniform("cam0", [cam_image_id](GLint& id) {
+                    glActiveTexture(CAM_UNIT_GL);
+                    glBindTexture(GL_TEXTURE_2D, cam_image_id);
+                    glUniform1i(id, CAM_UNIT);
+                });
             }
-        }
 
-        program->setUniform("img0", [image_id](GLint& id) {
-            glActiveTexture(IMG_UNIT_GL);
-            glBindTexture(GL_TEXTURE_2D, image_id);
-            glUniform1i(id, IMG_UNIT);
-        });
+            // Set the image if we're using an image
+            if (!image.empty()) {
+                program->setUniform("img0", [image_id](GLint& id) {
+                    glActiveTexture(IMG_UNIT_GL);
+                    glBindTexture(GL_TEXTURE_2D, image_id);
+                    glUniform1i(id, IMG_UNIT);
+                });
+            }
 
-        program->setUniform("cam0", [cam_image_id](GLint& id) {
-            glActiveTexture(CAM_UNIT_GL);
-            glBindTexture(GL_TEXTURE_2D, cam_image_id);
-            glUniform1i(id, CAM_UNIT);
-        });
+            program->setUniform("iTime", [time](GLint& id) {
+                glUniform1f(id, static_cast<float>(time));
+            });
 
-        program->setUniform("iTime", [time](GLint& id) {
-            glUniform1f(id, static_cast<float>(time));
-        });
+            program->setUniform("iResolution", [resolution](GLint& id) {
+                glUniform2f(
+                    id,
+                    static_cast<float>(resolution.width),
+                    static_cast<float>(resolution.height)
+                );
+            });
 
-        program->setUniform("iResolution", [resolution](GLint& id) {
-            glUniform2f(
-                id,
+            program->setUniform("frame", [iter](GLint& id) {
+                glUniform1i(id, static_cast<int>(iter));
+            });
+
+            program->setUniform("firstPass", [first_pass](GLint& id) {
+                glUniform1i(id, first_pass);
+            });
+
+            program->setUniform("lastOut", [output_texs](GLint& id) {
+                glActiveTexture(LAST_OUTPUT_UNIT_GL);
+                glBindTexture(GL_TEXTURE_2D, output_texs[SRC]);
+                glUniform1i(id, LAST_OUTPUT_UNIT);
+            });
+
+
+            glViewport(0,0, resolution.width, resolution.height);
+
+            // Draw our vertices
+            glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+            glUseProgram(0);
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+            // Swap the ping pong buffer!
+            std::swap(draw_bufs[SRC], draw_bufs[DEST]);
+            std::swap(output_texs[SRC], output_texs[DEST]);
+
+            // Calculate blit settings
+            int win_width, win_height;
+            glfwGetWindowSize(window, &win_width, &win_height);
+            DrawInfo draw_info = DrawInfo::scaleCenter(
                 static_cast<float>(resolution.width),
-                static_cast<float>(resolution.height)
+                static_cast<float>(resolution.height),
+                static_cast<float>(win_width),
+                static_cast<float>(win_height)
             );
-        });
 
-        program->setUniform("frame", [iter](GLint& id) {
-            glUniform1i(id, static_cast<int>(iter));
-        });
+            // Draw to the screen
+            glDrawBuffer(GL_BACK);
+            glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo);
+            glReadBuffer(draw_bufs[SRC]);
+            glViewport(0,0, win_width, win_height);
+            glBlitFramebuffer(
+                0,0, resolution.width, resolution.height,
+                draw_info.x0, draw_info.y0, draw_info.x1, draw_info.y1,
+                GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT,
+                GL_NEAREST
+            );
 
-        program->setUniform("firstPass", [first_pass](GLint& id) {
-            glUniform1i(id, first_pass);
-        });
-
-        program->setUniform("lastOut", [output_texs](GLint& id) {
-            glActiveTexture(LAST_OUTPUT_UNIT_GL);
-            glBindTexture(GL_TEXTURE_2D, output_texs[SRC]);
-            glUniform1i(id, LAST_OUTPUT_UNIT);
-        });
-
-
-        glViewport(0,0, resolution.width, resolution.height);
-
-        // Draw our vertices
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-        glUseProgram(0);
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-        // Swap the ping pong buffer!
-        std::swap(draw_bufs[SRC], draw_bufs[DEST]);
-        std::swap(output_texs[SRC], output_texs[DEST]);
-
-        // Calculate blit settings
-        int win_width, win_height;
-        glfwGetWindowSize(window, &win_width, &win_height);
-        DrawInfo draw_info = DrawInfo::scaleCenter(
-            static_cast<float>(resolution.width),
-            static_cast<float>(resolution.height),
-            static_cast<float>(win_width),
-            static_cast<float>(win_height)
-        );
-
-        // Draw to the screen
-        glDrawBuffer(GL_BACK);
-        glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo);
-        glReadBuffer(draw_bufs[SRC]);
-        glViewport(0,0, win_width, win_height);
-        glBlitFramebuffer(
-            0,0, resolution.width, resolution.height,
-            draw_info.x0, draw_info.y0, draw_info.x1, draw_info.y1,
-            GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT,
-            GL_NEAREST
-        );
+            // Show buffer
+            glfwSwapBuffers(window);
+            first_pass = false;
+        }
 
         // Report on shader related warnings
         std::unordered_set<std::string> warnings = program->getWarnings();
@@ -366,10 +385,6 @@ int main(int argc, const char** argv) {
 
             last_warnings = warnings;
         }
-
-        // Show buffer
-        glfwSwapBuffers(window);
-        first_pass = false;
 
         std::this_thread::sleep_for(std::chrono::milliseconds(pause_arg.getValue()));
     }
