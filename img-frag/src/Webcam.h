@@ -20,6 +20,8 @@ class Webcam {
         int getHeight();
         int getWidth();
 
+        void setProp(int prop_id, double value);
+
     private:
         void nextFrame();
 

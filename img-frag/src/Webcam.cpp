@@ -23,7 +23,7 @@ bool Webcam::read(cv::OutputArray& out) {
 void Webcam::nextFrame() {
     cv::Mat frame;
     if (webcam_.read(frame)) {
-        cv::cvtColor(frame, frame_, cv::COLOR_BGR2RGB);
+        cv::cvtColor(frame, frame, cv::COLOR_BGR2RGB);
         flip(frame, frame, -1);
         frame_mutex_.lock();
         size_ = frame.size();
@@ -31,6 +31,10 @@ void Webcam::nextFrame() {
         new_frame_ = true;
         frame_mutex_.unlock();
     }
+}
+
+void Webcam::setProp(int prop_id, double value) {
+    webcam_.set(prop_id, value);
 }
 
 Error Webcam::start() {

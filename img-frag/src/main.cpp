@@ -1,7 +1,9 @@
-// dSTL
+// STL
 #include <iostream>
 #include <unordered_set>
 #include <climits>
+#include <chrono>
+#include <thread>
 
 // OpenGL
 #include <GL/glew.h>
@@ -24,6 +26,8 @@
 #define IMG_UNIT_GL GL_TEXTURE0
 #define LAST_OUTPUT_UNIT 1
 #define LAST_OUTPUT_UNIT_GL GL_TEXTURE1
+#define CAM_UNIT 2
+#define CAM_UNIT_GL GL_TEXTURE2
 
 // For ping pong rendering
 #define SRC 0
@@ -82,6 +86,7 @@ int main(int argc, const char** argv) {
     TCLAP::ValueArg<std::string> img_arg("i", "img", "texture image path", false, "", "string", cmd);
     TCLAP::ValueArg<int> height_arg("", "height", "window height (width will be calculated automatically)", false, 720, "int", cmd);
     TCLAP::ValueArg<int> cam_arg("c", "cam", "camera device id", false, 0, "int", cmd);
+    TCLAP::ValueArg<int> pause_arg("p", "pause", "miliseconds to pause between frames", false, 0, "int", cmd);
 
     // Parse command line arguments
     try {
@@ -91,18 +96,12 @@ int main(int argc, const char** argv) {
         return 1;
     }
 
-    // Load the image provided to us on the command line
+    // Resolution of our image
+    cv::Size resolution(0, 0);
+
+    // Load the image
     cv::Mat image;
-    std::unique_ptr<Webcam> cam = nullptr;
-    if (cam_arg.isSet()) {
-        cam = std::make_unique<Webcam>(cam_arg.getValue());
-        Error err = cam->start();
-        if (!err.empty()) {
-            std::cerr << "error: failed to load webcam: " << err << std::endl;
-            return 1;
-        }
-        cam->read(image);
-    } else {
+    if (img_arg.isSet()) {
         const std::string img_path = img_arg.getValue();
         image = cv::imread(img_path);
         if (image.empty()) {
@@ -110,11 +109,31 @@ int main(int argc, const char** argv) {
             return 1;
         }
 
+        resolution = image.size();
+
         cv::cvtColor(image, image, cv::COLOR_BGR2RGB);
         flip(image, image, 0);
     }
 
-    cv::Size resolution = image.size();
+    // Load the webcamera
+    std::unique_ptr<Webcam> cam = nullptr;
+    cv::Mat cam_image;
+    if (cam_arg.isSet()) {
+        cam = std::make_unique<Webcam>(cam_arg.getValue());
+        if (resolution.width != 0) {
+            cam->setProp(cv::CAP_PROP_FRAME_WIDTH, resolution.width);
+            cam->setProp(cv::CAP_PROP_FRAME_HEIGHT, resolution.height);
+        }
+
+        Error err = cam->start();
+        if (!err.empty()) {
+            std::cerr << "error: failed to load webcam: " << err << std::endl;
+            return 1;
+        }
+
+        cam->read(cam_image);
+        resolution = cam_image.size();
+    }
 
     // Set GLFW error callback
     glfwSetErrorCallback(onError);
@@ -154,10 +173,15 @@ int main(int argc, const char** argv) {
     glewExperimental = GL_TRUE;
     glewInit();
 
-    // initialize first frame
-    GLuint image_id;
+    // Load image into texture
+    GLuint image_id = GL_FALSE;
     glGenTextures(1, &image_id);
     populateTexture(IMG_UNIT_GL, image_id, image);
+
+    // Load first frame of webcam image
+    GLuint cam_image_id = GL_FALSE;
+    glGenTextures(1, &cam_image_id);
+    populateTexture(CAM_UNIT_GL, cam_image_id, cam_image);
 
     // Configure shader program. We will check for errors once in our run loop
     auto program = std::make_unique<ShaderProgram>();
@@ -252,15 +276,21 @@ int main(int argc, const char** argv) {
 
         // Load the webcam frame if we're using a webcam
         if (cam != nullptr) {
-            if (cam->read(image)) {
-                populateTexture(IMG_UNIT_GL, image_id, image);
+            if (cam->read(cam_image)) {
+                populateTexture(CAM_UNIT_GL, cam_image_id, cam_image);
             }
         }
 
         program->setUniform("img0", [image_id](GLint& id) {
             glActiveTexture(IMG_UNIT_GL);
             glBindTexture(GL_TEXTURE_2D, image_id);
-            glUniform1i(id, 0);
+            glUniform1i(id, IMG_UNIT);
+        });
+
+        program->setUniform("cam0", [cam_image_id](GLint& id) {
+            glActiveTexture(CAM_UNIT_GL);
+            glBindTexture(GL_TEXTURE_2D, cam_image_id);
+            glUniform1i(id, CAM_UNIT);
         });
 
         program->setUniform("iTime", [time](GLint& id) {
@@ -340,6 +370,8 @@ int main(int argc, const char** argv) {
         // Show buffer
         glfwSwapBuffers(window);
         first_pass = false;
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(pause_arg.getValue()));
     }
 
     return 0;
