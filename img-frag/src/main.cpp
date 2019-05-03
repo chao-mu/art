@@ -4,6 +4,7 @@
 #include <climits>
 #include <chrono>
 #include <thread>
+#include <filesystem>
 
 // OpenGL
 #include <GL/glew.h>
@@ -54,6 +55,47 @@ void populateTexture(GLenum texture_unit, GLuint tex_id, cv::Mat& frame) {
     glActiveTexture(prev_active);
 }
 
+void saveTexture(GLuint tex_id, const std::string& path="") {
+    std::string dest = path;
+    if (dest.empty()) {
+        std::stringstream s;
+        auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::system_clock::now().time_since_epoch()
+                ).count();
+        std::time_t now = std::time(nullptr);
+        s << "output-" << std::put_time(std::localtime(&now), "%Y-%m-%d_") << ms << ".png";
+        dest = s.str();
+    }
+
+    // Store the previous active texture so we can revert to it
+    GLint prev_active = 0;
+    glGetIntegeri_v(GL_ACTIVE_TEXTURE, 1, &prev_active);
+
+    glBindTexture(GL_TEXTURE_2D, tex_id);
+
+    GLint alignment;
+    glGetIntegerv(GL_PACK_ALIGNMENT, &alignment);
+
+    GLint width;
+    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &width);
+
+    GLint height;
+    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &height);
+
+    // Load the actual image daata
+    char* data = new char[width * height * 3];
+    glGetTexImage(GL_TEXTURE_2D, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+
+    // Restore active texture
+    glActiveTexture(prev_active);
+
+    cv::Mat image(height, width, CV_8UC3, data);
+
+    cv::cvtColor(image, image, cv::COLOR_BGR2RGB);
+    flip(image, image, 0);
+    cv::imwrite(dest, image);
+}
+
 // GLFW error callback
 void onError(int errc, const char* desc) {
     std::cerr << "Error (" << std::to_string(errc) << "): " << std::string(desc) << std::endl;
@@ -65,6 +107,10 @@ void onWindowSize(GLFWwindow* /* window */, int width, int height) {
     glViewport(0,0, width, height);
 }
 
+// Globals EVIL, please refactor this.
+GLuint output_texs[2] = {};
+std::string img_out;
+
 // GLFW key press callback
 void onKey(GLFWwindow* window, int key, int /*scancode*/, int action, int /*mods*/) {
     if (action == GLFW_RELEASE) {
@@ -73,6 +119,7 @@ void onKey(GLFWwindow* window, int key, int /*scancode*/, int action, int /*mods
                 glfwSetWindowShouldClose(window, GLFW_TRUE);
                 break;
             case GLFW_KEY_P:
+                saveTexture(output_texs[SRC], img_out);
                 break;
         }
     }
@@ -84,6 +131,7 @@ int main(int argc, const char** argv) {
     TCLAP::ValueArg<std::string> vert_arg("", "vert", "path to vertex shader", false, "vert.glsl", "string", cmd);
     TCLAP::ValueArg<std::string> frag_arg("", "frag", "path to fragment shader", false, "frag.glsl", "string", cmd);
     TCLAP::ValueArg<std::string> img_arg("i", "img", "texture image path", false, "", "string", cmd);
+    TCLAP::ValueArg<std::string> img_out_arg("o", "image-out", "output image path", false, "", "string", cmd);
     TCLAP::ValueArg<int> height_arg("", "height", "window height (width will be calculated automatically)", false, 720, "int", cmd);
     TCLAP::ValueArg<int> cam_arg("c", "cam", "camera device id", false, 0, "int", cmd);
     TCLAP::ValueArg<int> pause_arg("p", "pause", "miliseconds to pause between frames", false, 0, "int", cmd);
@@ -100,6 +148,8 @@ int main(int argc, const char** argv) {
         std::cerr << "error: " << e.error() << " for arg " << e.argId() << std::endl;
         return 1;
     }
+
+    img_out = img_out_arg.getValue();
 
     // Resolution of our image
     cv::Size resolution(0, 0);
@@ -137,6 +187,11 @@ int main(int argc, const char** argv) {
 
         cam->read(cam_image);
         resolution = cam_image.size();
+    }
+
+    if (resolution.width == 0) {
+        resolution.width = 640;
+        resolution.height = 480;
     }
 
     // Set GLFW error callback
@@ -228,7 +283,6 @@ int main(int argc, const char** argv) {
     glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 
     // Our textures for ping-ponging
-    GLuint output_texs[2] = {};
     GLuint draw_bufs[2] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1};
     glGenTextures(2, output_texs);
     for (const auto& id : output_texs) {
@@ -331,7 +385,7 @@ int main(int argc, const char** argv) {
                 glUniform1i(id, first_pass);
             });
 
-            program->setUniform("lastOut", [output_texs](GLint& id) {
+            program->setUniform("lastOut", [](GLint& id) {
                 glActiveTexture(LAST_OUTPUT_UNIT_GL);
                 glBindTexture(GL_TEXTURE_2D, output_texs[SRC]);
                 glUniform1i(id, LAST_OUTPUT_UNIT);
