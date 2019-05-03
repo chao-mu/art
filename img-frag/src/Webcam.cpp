@@ -2,7 +2,7 @@
 
 #include <string>
 
-Webcam::Webcam(int device) : running_(false), new_frame_(false), device_(device) {
+Webcam::Webcam(int device, double fps, cv::Size size) : running_(false), new_frame_(false), device_(device), size_(size), fps_(fps) {
 }
 
 Webcam::~Webcam() {
@@ -22,7 +22,7 @@ bool Webcam::read(cv::OutputArray& out) {
 
 void Webcam::nextFrame() {
     cv::Mat frame;
-    if (webcam_.read(frame)) {
+    if (webcam_->read(frame)) {
         cv::cvtColor(frame, frame, cv::COLOR_BGR2RGB);
         flip(frame, frame, -1);
         frame_mutex_.lock();
@@ -33,19 +33,35 @@ void Webcam::nextFrame() {
     }
 }
 
-void Webcam::setProp(int prop_id, double value) {
-    webcam_.set(prop_id, value);
-}
-
 Error Webcam::start() {
     if (running_.load()) {
         return {};
     }
 
-    webcam_.open(device_);
-    if (!webcam_.isOpened()) {
+    webcam_ = std::make_unique<cv::VideoCapture>(device_, cv::CAP_V4L2);
+    if (!webcam_->isOpened()) {
         return "Unable to open capture device " + std::to_string(device_);
     }
+
+    if (size_.width != 0) {
+        std::cout << size_.width << std::endl;
+        if (!webcam_->set(cv::CAP_PROP_FRAME_WIDTH, size_.width)) {
+            return "Unable to set frame width";
+        }
+
+        if (!webcam_->set(cv::CAP_PROP_FRAME_HEIGHT, size_.height)) {
+            return "Unable to set frame height";
+        }
+    }
+
+    if (fps_ != 0) {
+        if (!webcam_->set(cv::CAP_PROP_FPS, fps_)) {
+            return "Unable to set frame rate";
+        }
+    }
+
+    std::cout << "Camera FPS: " << webcam_->get(cv::CAP_PROP_FPS) << std::endl;
+
 
     // Ensure after start there's at least one frame available.
     nextFrame();

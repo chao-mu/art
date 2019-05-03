@@ -12,7 +12,7 @@
 class Webcam {
     public:
         ~Webcam();
-        Webcam(int device);
+        Webcam(int device, double fps=0, cv::Size size=cv::Size(0,0));
         Error start();
         void stop();
         bool read(cv::OutputArray& out);
@@ -20,19 +20,18 @@ class Webcam {
         int getHeight();
         int getWidth();
 
-        void setProp(int prop_id, double value);
-
     private:
         void nextFrame();
 
         std::mutex frame_mutex_;
         cv::Mat frame_;
-        cv::VideoCapture webcam_;
+        std::unique_ptr<cv::VideoCapture> webcam_;
         std::thread thread_;
         std::atomic<bool> running_;
         bool new_frame_;
         int device_;
         cv::Size size_;
+        double fps_;
 };
 
 #endif

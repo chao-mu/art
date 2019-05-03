@@ -88,6 +88,10 @@ int main(int argc, const char** argv) {
     TCLAP::ValueArg<int> cam_arg("c", "cam", "camera device id", false, 0, "int", cmd);
     TCLAP::ValueArg<int> pause_arg("p", "pause", "miliseconds to pause between frames", false, 0, "int", cmd);
     TCLAP::ValueArg<int> stages_arg("s", "stages", "number of stages", false, 1, "int", cmd);
+    TCLAP::ValueArg<double> cam_fps_arg("", "cam-fps", "FPS to set for cam", false, 0, "int", cmd);
+    TCLAP::ValueArg<int> cam_width_arg("", "cam-width", "width of camera resolution", false, 0, "int", cmd);
+    TCLAP::ValueArg<int> cam_height_arg("", "cam-height", "height of camera resolution", false, 0, "int", cmd);
+    TCLAP::SwitchArg debug_timer_arg("", "debug-timer", "debug time between frames", cmd);
 
     // Parse command line arguments
     try {
@@ -120,12 +124,11 @@ int main(int argc, const char** argv) {
     std::unique_ptr<Webcam> cam = nullptr;
     cv::Mat cam_image;
     if (cam_arg.isSet()) {
-        cam = std::make_unique<Webcam>(cam_arg.getValue());
-        if (resolution.width != 0) {
-            cam->setProp(cv::CAP_PROP_FRAME_WIDTH, resolution.width);
-            cam->setProp(cv::CAP_PROP_FRAME_HEIGHT, resolution.height);
+        if (resolution.width == 0) {
+            resolution.width = cam_width_arg.getValue();
+            resolution.height = cam_height_arg.getValue();
         }
-
+        cam = std::make_unique<Webcam>(cam_arg.getValue(), cam_fps_arg.getValue(), resolution);
         Error err = cam->start();
         if (!err.empty()) {
             std::cerr << "error: failed to load webcam: " << err << std::endl;
@@ -248,6 +251,7 @@ int main(int argc, const char** argv) {
     bool first_pass = true;
     unsigned int iter = 0;
     int stages = stages_arg.getValue();
+    double last_time = glfwGetTime();
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
 
@@ -387,6 +391,12 @@ int main(int argc, const char** argv) {
         }
 
         std::this_thread::sleep_for(std::chrono::milliseconds(pause_arg.getValue()));
+
+        if (debug_timer_arg.getValue()) {
+            double current_time = glfwGetTime();
+            std::cout << "FPS: " << current_time - last_time << std::endl;
+            last_time = glfwGetTime();
+        }
     }
 
     return 0;
