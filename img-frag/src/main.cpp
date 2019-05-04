@@ -140,6 +140,7 @@ int main(int argc, const char** argv) {
     TCLAP::ValueArg<int> cam_width_arg("", "cam-width", "width of camera resolution", false, 0, "int", cmd);
     TCLAP::ValueArg<int> cam_height_arg("", "cam-height", "height of camera resolution", false, 0, "int", cmd);
     TCLAP::SwitchArg debug_timer_arg("", "debug-timer", "debug time between frames", cmd);
+    TCLAP::SwitchArg full_arg("", "full", "maximized, no titlebar", cmd);
 
     // Parse command line arguments
     try {
@@ -209,6 +210,11 @@ int main(int argc, const char** argv) {
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
+    if (full_arg.getValue()) {
+        glfwWindowHint(GLFW_DECORATED, false);
+        glfwWindowHint(GLFW_MAXIMIZED, true);
+    }
+
     float height = static_cast<float>(height_arg.getValue());
     float ratio = static_cast<float>(resolution.height) / height;
     float width = static_cast<float>(resolution.width) / ratio;
@@ -217,6 +223,10 @@ int main(int argc, const char** argv) {
         glfwTerminate();
         std::cerr << "Failed to create window" << std::endl;
         return 1;
+    }
+
+    if (full_arg.getValue()) {
+        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
     }
 
     // Set window resize callback
