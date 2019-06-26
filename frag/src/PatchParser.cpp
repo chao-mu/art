@@ -21,6 +21,9 @@
 #define KEY_WIDTH "width"
 #define KEY_HEIGHT "height"
 #define KEY_REPEAT "repeat"
+#define KEY_INPUT "input"
+#define KEY_AMP "amp"
+#define KEY_SHIFT "shift"
 #define MEDIA_TYPE_IMAGE "image"
 
 namespace frag {
@@ -68,50 +71,63 @@ namespace frag {
 
             const std::string output = settings[KEY_OUTPUT].as<std::string>();
 
-            if (!settings[KEY_TYPE]) {
-                throw std::runtime_error("A module is missing type");
+            if (!settings[KEY_PATH]) {
+                throw std::runtime_error("A module is missing path");
             }
 
-            const std::string type = settings[KEY_TYPE].as<std::string>();
+            const std::string path = settings[KEY_PATH].as<std::string>();
 
-            auto mod = std::make_shared<Module>(output, type, res);
+            auto mod = std::make_shared<Module>(output, path, res);
 
             if (settings[KEY_INPUTS]) {
-                const std::regex numeric_re(R"(^\d+(?:\.\d+)?)");
-                const std::regex src_re(R"(^(\w+)(?:\.([rgba]{1,4}))?)");
+                const std::regex numeric_re(R"(^-?\d+(?:\.\d+)?)");
+                const std::regex src_re(R"(^(\w+)(?:\.([rgbaxyzw]{1,4}))?)");
 
                 for (const auto& input_kv : settings[KEY_INPUTS]) {
                     const std::string key = input_kv.first.as<std::string>();
                     const YAML::Node& value = input_kv.second;
 
-                    // If it's a complex data type it's definitely not a texture name
-                    if (value.Type() != YAML::NodeType::Scalar) {
-                        continue;
-                    }
-
-                    const std::string svalue = value.as<std::string>();
-
-                    // If it's numeric, skip it
-                    if (std::regex_match(svalue, numeric_re)) {
-                        continue;
-                    }
-
-                    std::smatch src_match;
-                    if (!std::regex_match(svalue, src_match, src_re)) {
-                        throw std::runtime_error("Invalid source specified for input " + key);
-                    }
-
-                    std::cout << src_match[1] << "|" << src_match[2] << std::endl;
                     Module::Source src;
-                    src.name = src_match[1];
 
-                    const std::string swiz = src_match[2];
-                    if (swiz.size() > 0) src.first = swiz[0];
-                    if (swiz.size() > 1) src.second = swiz[1];
-                    if (swiz.size() > 2) src.third = swiz[2];
-                    if (swiz.size() > 3) src.fourth = swiz[3];
+                    std::string svalue;
+                    if (value.Type() == YAML::NodeType::Map) {
+                        svalue = value[KEY_INPUT].as<std::string>();
 
-                    mod->addTextureSource(key, src);
+                        if (value[KEY_AMP]) {
+                            src.amp = value[KEY_AMP].as<float>();
+                        }
+
+                        if (value[KEY_SHIFT]) {
+                            src.shift = value[KEY_SHIFT].as<float>();
+                        }
+                    } else if (value.Type() != YAML::NodeType::Sequence) {
+                        svalue = value.as<std::string>();
+                    }
+
+                    bool test_bool;
+                    float test_float;
+                    if (svalue != "" &&
+                            !YAML::convert<bool>::decode(value, test_bool) &&
+                            !YAML::convert<float>::decode(value, test_float)) {
+                        src.is_texture = true;
+
+                        std::smatch src_match;
+                        if (!std::regex_match(svalue, src_match, src_re)) {
+                            throw std::runtime_error("Invalid source specified for input " + key);
+                        }
+
+                        src.name = src_match[1];
+
+                        const std::string swiz = src_match[2];
+                        if (swiz.size() > 0) src.first = swiz[0];
+                        if (swiz.size() > 1) src.second = swiz[1];
+                        if (swiz.size() > 2) src.third = swiz[2];
+                        if (swiz.size() > 3) src.fourth = swiz[3];
+                    } else {
+                        src.is_texture = false;
+                    }
+
+                    mod->addSource(key, src);
                 }
             }
 
@@ -128,8 +144,8 @@ namespace frag {
                     if (!gl_type.has_value()) {
                         throw std::runtime_error(
                                 "Module entry with output '" +
-                                output + "' specifies non-existent uniform '" + param_name +
-                                "' for type '" + type + "'");
+                                output + "' and path '" + path + "' specifies non-existent uniform '" +
+                                param_name);
                     }
 
                     switch (gl_type.value()) {
@@ -196,7 +212,7 @@ namespace frag {
                         case GL_SAMPLER_2D: break;
                         default:
                             throw std::runtime_error(
-                                "Module type " + type + " specifies unsupported uniform " + param_name);
+                                "Module with path " + path + " specifies unsupported uniform " + param_name);
                     }
                 }
                 mod->unbind();

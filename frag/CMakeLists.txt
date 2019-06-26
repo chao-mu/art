@@ -11,7 +11,7 @@ set(ROOT_DIR "${CMAKE_SOURCE_DIR}/..")
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${ROOT_DIR}/cmake/Modules/")
 
 # My stuff
-add_executable(${PROJECT_NAME} src/main.cpp src/Media.cpp src/PingPongTexture.cpp src/Texture.cpp src/PatchParser.cpp src/Module.cpp src/VertexArray.cpp src/IndexBuffer.cpp src/VertexBuffer.cpp src/GLUtil.cpp src/ShaderProgram.cpp src/MathUtil.cpp src/Camera.cpp)
+add_executable(${PROJECT_NAME} src/main.cpp src/fileutil.cpp src/Media.cpp src/PingPongTexture.cpp src/Texture.cpp src/PatchParser.cpp src/Module.cpp src/VertexArray.cpp src/IndexBuffer.cpp src/VertexBuffer.cpp src/GLUtil.cpp src/ShaderProgram.cpp src/MathUtil.cpp src/Camera.cpp)
 target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_compile_options(${PROJECT_NAME} PRIVATE "-Wextra" "-Werror" "-Wall" "-pedantic-errors" "-Wconversion")
 

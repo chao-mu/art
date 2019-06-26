@@ -1,12 +1,12 @@
 #include "ShaderProgram.h"
 
-#include <fstream>
-#include <errno.h>
-#include <cstring>
-#include <sstream>
-#include <iostream>
+// STL
 
+// OpenGL
 #include <GLFW/glfw3.h>
+
+// ours
+#include "fileutil.h"
 
 namespace frag {
 
@@ -52,16 +52,7 @@ namespace frag {
     }
 
     void ShaderProgram::loadShader(GLenum type, const std::string& path) {
-        std::ifstream ifs(path);
-        if (ifs.fail()) {
-            std::ostringstream err;
-            err << "Error loading " << path << " - " <<  std::strerror(errno);
-            throw std::runtime_error(err.str());
-        }
-
-        std::stringstream stream;
-        stream << ifs.rdbuf();
-        loadShaderStr(type, stream.str(), path);
+        loadShaderStr(type, fileutil::slurp(path), path);
     }
 
     void ShaderProgram::markUniformInUse(const std::string& name) {

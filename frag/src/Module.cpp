@@ -4,12 +4,15 @@
 #include <sstream>
 #include <regex>
 
+// Ours
+#include "fileutil.h"
+
 namespace frag {
     Module::Module(
             const std::string& output,
-            const std::string& type,
+            const std::string& path,
             const Resolution& res
-        ) : output_(output), type_(type), resolution_(res) , program_(std::make_shared<ShaderProgram>()) {
+        ) : output_(output), path_(path), resolution_(res) , program_(std::make_shared<ShaderProgram>()) {
 
         // Our render target
         ping_pong_ = std::make_shared<frag::PingPongTexture>(
@@ -18,7 +21,9 @@ namespace frag {
         // Initialize with blank images
         for (const auto& tex : {ping_pong_->getSrcTex(), ping_pong_->getDestTex()}) {
             tex->bind();
-            GLCall(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, resolution_.width, resolution_.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0));
+            // NOTE: If this does not need to be a GL_RGB32F we might get a performance improvement
+            // if we downgrade
+            GLCall(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, resolution_.width, resolution_.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0));
             tex->unbind();
         }
 
@@ -69,14 +74,16 @@ namespace frag {
         GLCall(glDrawBuffer(ping_pong_->getDestDrawBuf()));
     }
 
-    void Module::addTextureSource(const std::string& input, Source src) {
-        texture_sources_[input] = src;
+    void Module::addSource(const std::string& input, Source src) {
+        sources_[input] = src;
     }
 
     std::map<std::string, std::string> Module::getTextureSources() const {
         std::map<std::string, std::string> sources;
-        for (const auto& kv : texture_sources_) {
-            sources[kv.first] = kv.second.name;
+        for (const auto& kv : sources_) {
+            if (kv.second.is_texture) {
+                sources[kv.first] = kv.second.name;
+            }
         }
 
         return sources;
@@ -86,8 +93,8 @@ namespace frag {
         return output_;
     }
 
-    const std::string& Module::getType() const {
-        return type_;
+    const std::string& Module::getPath() const {
+        return path_;
     }
 
     std::shared_ptr<ShaderProgram> Module::getShaderProgram() {
@@ -137,38 +144,47 @@ namespace frag {
             }
         )V";
 
-        const std::string shader_path = getType() + ".glsl";
-
-        std::ifstream ifs(shader_path);
+        std::ifstream ifs(path_);
         if (ifs.fail()) {
             std::ostringstream err;
-            err << "Error loading " << shader_path << " - " <<  std::strerror(errno);
+            err << "Error loading " << path_ << " - " <<  std::strerror(errno);
             throw std::runtime_error(err.str());
         }
 
         std::stringstream frag_shader;
         const std::regex pragma_channel_re(R"(^#pragma\s+channel\s+(.*)$)");
-        const std::regex channel_info_re(R"(^(\w+)\s+(\w+)\s*$)");
+        const std::regex pragma_include_re(R"(^#pragma\s+include\s+(.*)\s*$)");
+        const std::regex channel_info_re(R"(^(\w+)\s+(\w+)\s*(.*)$)");
         std::smatch match;
 
         std::string line;
         while (std::getline(ifs, line)) {
-            if (std::regex_match(line, match, pragma_channel_re)) {
+            if (std::regex_match(line, match, pragma_include_re)) {
+                frag_shader << fileutil::slurp(path_, match[1]);
+            } else if (std::regex_match(line, match, pragma_channel_re)) {
                 std::string channel_info = match[1].str();
                 if (std::regex_match(channel_info, match, channel_info_re)) {
                     const std::string type = match[1];
                     const std::string name = match[2];
-                    bool is_texture = texture_sources_.count(name) > 0;
+                    const std::string def = match[3];
 
-                    if (is_texture) {
+                    bool defined = sources_.count(name) > 0;
+                    const Source src = sources_[name];
+
+                    if (defined && src.is_texture) {
                         frag_shader << "uniform sampler2D " << name << ";\n";
                     } else {
-                        frag_shader << "uniform " << type << " " << name << ";\n";
+                        frag_shader << "uniform " << type << " " << name;
+
+                        if (!defined && def != "") {
+                            frag_shader << " = " << def;
+                        }
+
+                        frag_shader << ";\n";
                     }
 
                     frag_shader << type << " channel_" << name << "(in vec2 uv) {\n";
-                    if (is_texture) {
-                        Source& src = texture_sources_.at(name);
+                    if (defined && src.is_texture) {
                         frag_shader << "   return " << "texture(" << name << ", uv)";
                         if (type == "float") {
                             frag_shader << "." << src.first;
@@ -179,15 +195,21 @@ namespace frag {
                         } else if (type == "vec4") {
                             frag_shader << "." << src.first << src.second << src.third << src.fourth;
                         } else if (type == "bool") {
-                            frag_shader << src.first << " > 0.5";
+                            frag_shader << "." << src.first << " > 0.5";
                         } else {
                             throw std::runtime_error("unsupported channel type '" + type + "'");
                         }
-
-                        frag_shader << ";\n";
                     } else {
-                        frag_shader << "  return " << name << ";\n";
+                        frag_shader << "  return " << name;
                     }
+
+                    if (defined && type != "bool") {
+                        const Source& src = sources_.at(name);
+
+                        frag_shader << " * " << src.amp << " + " << src.shift;
+                    }
+
+                    frag_shader << ";\n";
                     frag_shader << "}\n";
                 } else {
                     throw std::runtime_error("Unable to parse channel definition line: " + line);
@@ -198,7 +220,7 @@ namespace frag {
         }
 
         program_->loadShaderStr(GL_VERTEX_SHADER, vert_shader, "internal-vert.glsl");
-        program_->loadShaderStr(GL_FRAGMENT_SHADER, frag_shader.str(), shader_path);
+        program_->loadShaderStr(GL_FRAGMENT_SHADER, frag_shader.str(), path_);
         program_->compile();
     }
 }
