@@ -24,6 +24,8 @@ namespace frag {
                 bool is_texture = false;
             };
 
+            static std::string toChannelName(const std::string name);
+
             Module(const std::string& output, const std::string& path, const Resolution& res);
 
             void addSource(const std::string& input, Source src);

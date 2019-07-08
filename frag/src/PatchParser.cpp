@@ -140,7 +140,8 @@ namespace frag {
                     const YAML::Node& param_value = kv.second;
 
                     std::shared_ptr<ShaderProgram> program = mod->getShaderProgram();
-                    std::optional<GLenum> gl_type = program->getUniformType(param_name);
+                    std::optional<GLenum> gl_type = program->getUniformType(
+                            Module::toChannelName(param_name));
                     if (!gl_type.has_value()) {
                         throw std::runtime_error(
                                 "Module entry with output '" +
@@ -148,24 +149,26 @@ namespace frag {
                                 param_name);
                     }
 
+                    const std::string uni_name = Module::toChannelName(param_name);
+
                     switch (gl_type.value()) {
                         case GL_FLOAT: {
                             float v = param_value.as<float>();
-                            program->setUniform(param_name, [&v](GLint& id) {
+                            program->setUniform(uni_name, [&v](GLint& id) {
                                 glUniform1f(id, v);
                             });
                             break;
                         }
                         case GL_INT: {
                             int v = param_value.as<int>();
-                            program->setUniform(param_name, [&v](GLint& id) {
+                            program->setUniform(uni_name, [&v](GLint& id) {
                                 glUniform1i(id, v);
                             });
                             break;
                         }
                         case GL_BOOL: {
                             bool v = param_value.as<bool>();
-                            program->setUniform(param_name, [&v](GLint& id) {
+                            program->setUniform(uni_name, [&v](GLint& id) {
                                 glUniform1i(id, v ? 1 : 0);
                             });
                             break;
@@ -177,7 +180,7 @@ namespace frag {
                                 v[i++] = node.as<float>();
                             }
 
-                            program->setUniform(param_name, [&v](GLint& id) {
+                            program->setUniform(uni_name, [&v](GLint& id) {
                                 glUniform2f(id, v[0], v[1]);
                             });
 
@@ -190,7 +193,7 @@ namespace frag {
                                 v[i++] = node.as<float>();
                             }
 
-                            program->setUniform(param_name, [&v](GLint& id) {
+                            program->setUniform(uni_name, [&v](GLint& id) {
                                 glUniform3f(id, v[0], v[1], v[2]);
                             });
 
@@ -203,7 +206,7 @@ namespace frag {
                                 v[i++] = node.as<float>();
                             }
 
-                            program->setUniform(param_name, [&v](GLint& id) {
+                            program->setUniform(uni_name, [&v](GLint& id) {
                                 glUniform4f(id, v[0], v[1], v[2], v[3]);
                             });
 

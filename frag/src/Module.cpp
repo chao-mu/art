@@ -49,6 +49,10 @@ namespace frag {
         ));
     }
 
+    std::string Module::toChannelName(const std::string name) {
+        return "se_channel_" + name;
+    }
+
     GLenum Module::getReadableBuf() {
         return ping_pong_->getSrcDrawBuf();
     }
@@ -168,13 +172,15 @@ namespace frag {
                     const std::string name = match[2];
                     const std::string def = match[3];
 
+                    const std::string internal_name = toChannelName(name);
+
                     bool defined = sources_.count(name) > 0;
                     const Source src = sources_[name];
 
                     if (defined && src.is_texture) {
-                        frag_shader << "uniform sampler2D " << name << ";\n";
+                        frag_shader << "uniform sampler2D " << internal_name << ";\n";
                     } else {
-                        frag_shader << "uniform " << type << " " << name;
+                        frag_shader << "uniform " << type << " " << internal_name;
 
                         if (!defined && def != "") {
                             frag_shader << " = " << def;
@@ -185,7 +191,7 @@ namespace frag {
 
                     frag_shader << type << " channel_" << name << "(in vec2 uv) {\n";
                     if (defined && src.is_texture) {
-                        frag_shader << "   return " << "texture(" << name << ", uv)";
+                        frag_shader << "   return " << "texture(" << internal_name << ", uv)";
                         if (type == "float") {
                             frag_shader << "." << src.first;
                         } else if (type == "vec2") {
@@ -200,7 +206,7 @@ namespace frag {
                             throw std::runtime_error("unsupported channel type '" + type + "'");
                         }
                     } else {
-                        frag_shader << "  return " << name;
+                        frag_shader << "  return " << internal_name;
                     }
 
                     if (defined && type != "bool") {

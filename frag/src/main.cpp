@@ -218,7 +218,7 @@ int main(int argc, const char** argv) {
                             "Module mapped input '" + dest + "' to non-existent '" + src + "'");
                 }
 
-                program->setUniform(dest, [&tex, &slot](GLint& id) {
+                program->setUniform(frag::Module::toChannelName(dest), [&tex, &slot](GLint& id) {
                     tex->bind(slot);
                     glUniform1i(id, slot);
                     slot++;
