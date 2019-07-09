@@ -162,7 +162,10 @@ namespace frag {
         std::smatch match;
 
         std::string line;
+        int line_no = 0;
         while (std::getline(ifs, line)) {
+            line_no++;
+
             if (std::regex_match(line, match, pragma_include_re)) {
                 frag_shader << fileutil::slurp(path_, match[1]);
             } else if (std::regex_match(line, match, pragma_channel_re)) {
@@ -222,8 +225,13 @@ namespace frag {
                 }
             } else {
                 frag_shader << line << "\n";
+                continue;
             }
+
+            frag_shader << "#line " << line_no + 1 << "\n";
         }
+
+        //std::cout << frag_shader.str() << std::endl;
 
         program_->loadShaderStr(GL_VERTEX_SHADER, vert_shader, "internal-vert.glsl");
         program_->loadShaderStr(GL_FRAGMENT_SHADER, frag_shader.str(), path_);

@@ -10,6 +10,7 @@
 
 // Ours
 #include "Texture.h"
+#include "Camera.h"
 
 #define KEY_MEDIAS "media"
 #define KEY_MODULES "modules"
@@ -24,7 +25,9 @@
 #define KEY_INPUT "input"
 #define KEY_AMP "amp"
 #define KEY_SHIFT "shift"
+#define KEY_SCALE_FILTER "sizeFilter"
 #define MEDIA_TYPE_IMAGE "image"
+#define MEDIA_TYPE_VIDEO "video"
 
 namespace frag {
     PatchParser::PatchParser(const std::string& path) : path_(path) {}
@@ -48,6 +51,8 @@ namespace frag {
             const std::string type = settings[KEY_TYPE].as<std::string>();
             if (type == MEDIA_TYPE_IMAGE) {
                 media[name] = loadImage(name, settings);
+            } else if (type == MEDIA_TYPE_VIDEO) {
+                media[name] = loadVideo(name, settings);
             }
         }
 
@@ -254,6 +259,29 @@ namespace frag {
         res.height = res_node[KEY_HEIGHT].as<int>();
 
         return res;
+    }
+
+    std::shared_ptr<Media> PatchParser::loadVideo(const std::string& name, const YAML::Node& settings) const {
+        if (!settings[KEY_PATH]) {
+            throw std::runtime_error("media '" + name + "' is missing path");
+        }
+
+        const std::string path = settings[KEY_PATH].as<std::string>();
+
+        auto vid = std::make_shared<Camera>(path);
+        if (settings[KEY_SCALE_FILTER]) {
+            const std::string filter = settings[KEY_SCALE_FILTER].as<std::string>();
+            if (filter == "nearest") {
+                vid->setScaleFilter(GL_NEAREST, GL_NEAREST);
+            } else {
+                throw std::runtime_error("Invalid scale filter");
+            }
+        }
+
+        vid->start();
+        vid->update();
+
+        return vid;
     }
 
     std::shared_ptr<Media> PatchParser::loadImage(const std::string& name, const YAML::Node& settings) const {

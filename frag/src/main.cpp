@@ -296,6 +296,10 @@ int main(int argc, const char** argv) {
         glfwSwapBuffers(window);
         first_pass = false;
 
+        for (auto& kv : media) {
+            kv.second->update();
+        }
+
         std::this_thread::sleep_for(std::chrono::milliseconds(pause_arg.getValue()));
 
         if (debug_timer_arg.getValue()) {

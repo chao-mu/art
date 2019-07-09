@@ -8,14 +8,21 @@ namespace frag {
 
         GLCall(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT));
         GLCall(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT));
-        GLCall(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
-        GLCall(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
+
+        setScaleFilter(GL_LINEAR, GL_LINEAR);
 
         GLCall(glBindTexture(GL_TEXTURE_2D, 0));
     }
 
     Texture::~Texture() {
         glDeleteTextures(1, &glID_);
+    }
+
+    void Texture::setScaleFilter(GLint min_param, GLint mag_param) {
+        this->borrowBind([min_param, mag_param]() {
+            GLCall(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, min_param));
+            GLCall(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, mag_param));
+        });
     }
 
     void Texture::save(const std::string& path) {

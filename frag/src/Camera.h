@@ -1,37 +1,51 @@
-#ifndef WEBCAM_H
-#define WEBCAM_H
+#ifndef FRAG_WEBCAM_H
+#define FRAG_WEBCAM_H
 
+// STL
 #include <mutex>
 #include <atomic>
 #include <thread>
+#include <chrono>
 
+// OpenCV
 #include <opencv2/opencv.hpp>
 
+// Ours
 #include "types.h"
+#include "Texture.h"
 
-class Camera {
-    public:
-        ~Camera();
-        Camera(int device, double fps=0, cv::Size size=cv::Size(0,0));
-        Error start();
-        void stop();
-        bool read(cv::OutputArray& out);
+namespace frag {
+    class Camera : public Texture {
+        public:
+            ~Camera();
+            Camera(int device, double fps=0, cv::Size size=cv::Size(0,0));
+            Camera(const std::string& path);
 
-        int getHeight();
-        int getWidth();
+            void start();
+            void stop();
+            virtual void update() override;
 
-    private:
-        void nextFrame();
+            bool read(cv::OutputArray& out);
 
-        std::mutex frame_mutex_;
-        cv::Mat frame_;
-        std::unique_ptr<cv::VideoCapture> webcam_;
-        std::thread thread_;
-        std::atomic<bool> running_;
-        bool new_frame_;
-        int device_;
-        cv::Size size_;
-        double fps_;
-};
+            int getHeight();
+            int getWidth();
+
+        private:
+            void nextFrame(bool loop=true);
+
+            std::mutex frame_mutex_;
+            cv::Mat frame_;
+            std::unique_ptr<cv::VideoCapture> vid_;
+            std::thread thread_;
+            std::atomic<bool> running_ = false;
+            bool new_frame_ = false;
+            int device_ = 0;
+            cv::Size size_ = cv::Size(0, 0);
+            double fps_ = 0;
+            const std::string path_;
+            std::chrono::high_resolution_clock::time_point last_frame_;
+
+    };
+}
 
 #endif

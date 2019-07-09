@@ -25,6 +25,7 @@ namespace frag {
 
         private:
             std::shared_ptr<Media> loadImage(const std::string& name, const YAML::Node& settings) const;
+            std::shared_ptr<Media> loadVideo(const std::string& name, const YAML::Node& settings) const;
             const std::string path_;
     };
 }
