@@ -82,11 +82,23 @@ namespace frag {
         sources_[input] = src;
     }
 
+    std::map<std::string, std::pair<std::string, std::string>> Module::getControlSources() const {
+        std::map<std::string, std::pair<std::string, std::string>> sources;
+        for (const auto& kv : sources_) {
+            const Source& src = kv.second;
+            if (src.controller != "") {
+                sources[kv.first] = std::make_pair(src.controller, src.control);
+            }
+        }
+
+        return sources;
+    }
+
     std::map<std::string, std::string> Module::getTextureSources() const {
         std::map<std::string, std::string> sources;
         for (const auto& kv : sources_) {
-            if (kv.second.is_texture) {
-                sources[kv.first] = kv.second.name;
+            if (kv.second.tex_name != "") {
+                sources[kv.first] = kv.second.tex_name;
             }
         }
 
@@ -180,7 +192,7 @@ namespace frag {
                     bool defined = sources_.count(name) > 0;
                     const Source src = sources_[name];
 
-                    if (defined && src.is_texture) {
+                    if (defined && src.tex_name != "") {
                         frag_shader << "uniform sampler2D " << internal_name << ";\n";
                     } else {
                         frag_shader << "uniform " << type << " " << internal_name;
@@ -193,7 +205,7 @@ namespace frag {
                     }
 
                     frag_shader << type << " channel_" << name << "(in vec2 uv) {\n";
-                    if (defined && src.is_texture) {
+                    if (defined && src.tex_name != "") {
                         frag_shader << "   return " << "texture(" << internal_name << ", uv)";
                         if (type == "float") {
                             frag_shader << "." << src.first;

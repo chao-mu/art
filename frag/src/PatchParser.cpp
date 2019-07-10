@@ -26,11 +26,40 @@
 #define KEY_AMP "amp"
 #define KEY_SHIFT "shift"
 #define KEY_SCALE_FILTER "sizeFilter"
+#define KEY_CONTROLLERS "controllers"
+#define CONTROLLER_TYPE_MIDI "midi"
 #define MEDIA_TYPE_IMAGE "image"
 #define MEDIA_TYPE_VIDEO "video"
 
 namespace frag {
     PatchParser::PatchParser(const std::string& path) : path_(path) {}
+
+    std::map<std::string, std::shared_ptr<midi::Device>> PatchParser::getControllers() const {
+        const YAML::Node patch = YAML::LoadFile(path_);
+        std::map<std::string, std::shared_ptr<midi::Device>> controllers;
+
+        if (!patch[KEY_CONTROLLERS]) {
+            return controllers;
+        }
+
+        for (const auto& kv : patch[KEY_CONTROLLERS]) {
+            const std::string name = kv.first.as<std::string>();
+            const YAML::Node& settings = kv.second;
+
+            if (!settings[KEY_TYPE]) {
+                throw std::runtime_error("controller '" + name + "' is missing type");
+            }
+
+            const std::string type = settings[KEY_TYPE].as<std::string>();
+            if (type == CONTROLLER_TYPE_MIDI) {
+                controllers[name] = loadMidiDevice(name, settings);
+            } else {
+                throw std::runtime_error("unsupported controller type " + type);
+            }
+        }
+
+        return controllers;
+    }
 
     std::map<std::string, std::shared_ptr<Media>> PatchParser::getMedia() const {
         const YAML::Node patch = YAML::LoadFile(path_);
@@ -53,6 +82,8 @@ namespace frag {
                 media[name] = loadImage(name, settings);
             } else if (type == MEDIA_TYPE_VIDEO) {
                 media[name] = loadVideo(name, settings);
+            } else {
+                throw std::runtime_error("unsupported media type " + type);
             }
         }
 
@@ -86,7 +117,8 @@ namespace frag {
 
             if (settings[KEY_INPUTS]) {
                 const std::regex numeric_re(R"(^-?\d+(?:\.\d+)?)");
-                const std::regex src_re(R"(^(\w+)(?:\.([rgbaxyzw]{1,4}))?)");
+                const std::regex tex_re(R"(^(\w+)(?:\.([rgbaxyzw]{1,4}))?)");
+                const std::regex ctrl_re(R"(^(\w+)\.(\w+))");
 
                 for (const auto& input_kv : settings[KEY_INPUTS]) {
                     const std::string key = input_kv.first.as<std::string>();
@@ -114,22 +146,21 @@ namespace frag {
                     if (svalue != "" &&
                             !YAML::convert<bool>::decode(value, test_bool) &&
                             !YAML::convert<float>::decode(value, test_float)) {
-                        src.is_texture = true;
+                        std::smatch match;
+                        if (std::regex_match(svalue, match, tex_re)) {
+                            src.tex_name = match[1];
 
-                        std::smatch src_match;
-                        if (!std::regex_match(svalue, src_match, src_re)) {
+                            const std::string swiz = match[2];
+                            if (swiz.size() > 0) src.first = swiz[0];
+                            if (swiz.size() > 1) src.second = swiz[1];
+                            if (swiz.size() > 2) src.third = swiz[2];
+                            if (swiz.size() > 3) src.fourth = swiz[3];
+                        } else if (std::regex_match(svalue, match, ctrl_re)) {
+                            src.controller = match[1];
+                            src.control = match[2];
+                        } else {
                             throw std::runtime_error("Invalid source specified for input " + key);
                         }
-
-                        src.name = src_match[1];
-
-                        const std::string swiz = src_match[2];
-                        if (swiz.size() > 0) src.first = swiz[0];
-                        if (swiz.size() > 1) src.second = swiz[1];
-                        if (swiz.size() > 2) src.third = swiz[2];
-                        if (swiz.size() > 3) src.fourth = swiz[3];
-                    } else {
-                        src.is_texture = false;
                     }
 
                     mod->addSource(key, src);
@@ -144,83 +175,23 @@ namespace frag {
                     const std::string param_name = kv.first.as<std::string>();
                     const YAML::Node& param_value = kv.second;
 
-                    std::shared_ptr<ShaderProgram> program = mod->getShaderProgram();
-                    std::optional<GLenum> gl_type = program->getUniformType(
-                            Module::toChannelName(param_name));
-                    if (!gl_type.has_value()) {
-                        throw std::runtime_error(
-                                "Module entry with output '" +
-                                output + "' and path '" + path + "' specifies non-existent uniform '" +
-                                param_name);
-                    }
-
+                    auto program = mod->getShaderProgram();
                     const std::string uni_name = Module::toChannelName(param_name);
 
-                    switch (gl_type.value()) {
-                        case GL_FLOAT: {
-                            float v = param_value.as<float>();
-                            program->setUniform(uni_name, [&v](GLint& id) {
-                                glUniform1f(id, v);
-                            });
-                            break;
-                        }
-                        case GL_INT: {
-                            int v = param_value.as<int>();
-                            program->setUniform(uni_name, [&v](GLint& id) {
-                                glUniform1i(id, v);
-                            });
-                            break;
-                        }
-                        case GL_BOOL: {
-                            bool v = param_value.as<bool>();
-                            program->setUniform(uni_name, [&v](GLint& id) {
-                                glUniform1i(id, v ? 1 : 0);
-                            });
-                            break;
-                        }
-                        case GL_FLOAT_VEC2: {
-                            float v[2] = {0, 0};
-                            int i = 0;
-                            for (const auto& node : param_value) {
-                                v[i++] = node.as<float>();
-                            }
+                    bool b;
+                    float f;
+                    if (YAML::convert<bool>::decode(param_value, b)) {
+                        program->setUniform(uni_name, b);
+                    } else if (YAML::convert<float>::decode(param_value, f)) {
+                        program->setUniform(uni_name, f);
+                    } else if (param_value.IsSequence()) {
+                        std::vector<float> v = {};
 
-                            program->setUniform(uni_name, [&v](GLint& id) {
-                                glUniform2f(id, v[0], v[1]);
-                            });
-
-                            break;
+                        for (const auto& el : param_value) {
+                            v.push_back(el.as<float>());
                         }
-                        case GL_FLOAT_VEC3: {
-                            float v[3] = {0, 0, 0};
-                            int i = 0;
-                            for (const auto& node : param_value) {
-                                v[i++] = node.as<float>();
-                            }
 
-                            program->setUniform(uni_name, [&v](GLint& id) {
-                                glUniform3f(id, v[0], v[1], v[2]);
-                            });
-
-                            break;
-                        }
-                        case GL_FLOAT_VEC4: {
-                            float v[4] = {0, 0, 0, 0};
-                            int i = 0;
-                            for (const auto& node : param_value) {
-                                v[i++] = node.as<float>();
-                            }
-
-                            program->setUniform(uni_name, [&v](GLint& id) {
-                                glUniform4f(id, v[0], v[1], v[2], v[3]);
-                            });
-
-                            break;
-                        }
-                        case GL_SAMPLER_2D: break;
-                        default:
-                            throw std::runtime_error(
-                                "Module with path " + path + " specifies unsupported uniform " + param_name);
+                        program->setUniform(uni_name, v);
                     }
                 }
                 mod->unbind();
@@ -259,6 +230,19 @@ namespace frag {
         res.height = res_node[KEY_HEIGHT].as<int>();
 
         return res;
+    }
+
+    std::shared_ptr<midi::Device> PatchParser::loadMidiDevice(const std::string& name, const YAML::Node& settings) const {
+        if (!settings[KEY_PATH]) {
+            throw std::runtime_error("controller '" + name + "' is missing path");
+        }
+
+        const std::string path = settings[KEY_PATH].as<std::string>();
+
+        auto dev = std::make_shared<midi::Device>(path);
+        dev->start();
+
+        return dev;
     }
 
     std::shared_ptr<Media> PatchParser::loadVideo(const std::string& name, const YAML::Node& settings) const {

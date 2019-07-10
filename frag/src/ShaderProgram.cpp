@@ -7,6 +7,7 @@
 
 // ours
 #include "fileutil.h"
+#include "MathUtil.h"
 
 namespace frag {
 
@@ -71,6 +72,83 @@ namespace frag {
         f(id);
 
         set_uniforms_.push_back(id);
+    }
+
+    void ShaderProgram::setUniform(const std::string& name, float v) {
+        setUniform(name, std::vector({v}));
+    }
+
+    void ShaderProgram::setUniform(const std::string& name, bool v) {
+        setUniform(name, v ? 1.0f : 0.0f);
+    }
+
+    void ShaderProgram::setUniform(const std::string& name, const midi::Control& c) {
+        if (c.type == midi::CONTROL_TYPE_BUTTON) {
+            setUniform(name, c.pressed);
+        } else {
+            setUniform(name, remap(c.value, c.low, c.high, 0, 1));
+        }
+    }
+
+    void ShaderProgram::setUniform(const std::string& name, std::vector<float> in_v) {
+        std::optional<GLenum> gl_type = getUniformType(name);
+
+        if (!gl_type.has_value()) {
+            return;
+        }
+
+        if (in_v.empty()) {
+            in_v.push_back(0);
+        }
+
+        while(in_v.size() < 4) {
+            in_v.push_back(in_v.back());
+        }
+
+        switch (gl_type.value()) {
+            case GL_FLOAT: {
+                float v = in_v[0];
+                setUniform(name, [&v](GLint& id) {
+                    glUniform1f(id, v);
+                });
+                break;
+            }
+            case GL_INT: {
+                int v = static_cast<int>(in_v[0]);
+                setUniform(name, [&v](GLint& id) {
+                    glUniform1i(id, v);
+                });
+                break;
+            }
+            case GL_BOOL: {
+                bool v = in_v[0] > 0.5;
+                setUniform(name, [&v](GLint& id) {
+                    glUniform1i(id, v ? 1 : 0);
+                });
+                break;
+            }
+            case GL_FLOAT_VEC2: {
+                setUniform(name, [&in_v](GLint& id) {
+                    glUniform2f(id, in_v[0], in_v[1]);
+                });
+
+                break;
+            }
+            case GL_FLOAT_VEC3: {
+                setUniform(name, [&in_v](GLint& id) {
+                    glUniform3f(id, in_v[0], in_v[1], in_v[2]);
+                });
+
+                break;
+            }
+            case GL_FLOAT_VEC4: {
+                setUniform(name, [&in_v](GLint& id) {
+                    glUniform4f(id, in_v[0], in_v[1], in_v[2], in_v[3]);
+                });
+
+                break;
+            }
+        }
     }
 
     std::vector<std::string> ShaderProgram::getUnsetUniforms() {

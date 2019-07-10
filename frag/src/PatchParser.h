@@ -13,6 +13,7 @@
 #include "Media.h"
 #include "Module.h"
 #include "types.h"
+#include "midi/Device.h"
 
 namespace frag {
     class PatchParser {
@@ -21,11 +22,14 @@ namespace frag {
 
             std::map<std::string, std::shared_ptr<Media>> getMedia() const;
             std::vector<std::shared_ptr<Module>> getModules() const;
+            std::map<std::string, std::shared_ptr<midi::Device>> getControllers() const;
+
             Resolution getResolution() const;
 
         private:
             std::shared_ptr<Media> loadImage(const std::string& name, const YAML::Node& settings) const;
             std::shared_ptr<Media> loadVideo(const std::string& name, const YAML::Node& settings) const;
+            std::shared_ptr<midi::Device> loadMidiDevice(const std::string& name, const YAML::Node& settings) const;
             const std::string path_;
     };
 }

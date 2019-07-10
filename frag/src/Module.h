@@ -14,7 +14,9 @@ namespace frag {
     class Module {
         public:
             struct Source {
-                std::string name;
+                std::string tex_name;
+                std::string controller;
+                std::string control;
                 char first = 'r';
                 char second = 'g';
                 char third = 'b';
@@ -30,6 +32,7 @@ namespace frag {
 
             void addSource(const std::string& input, Source src);
             std::map<std::string, std::string> getTextureSources() const;
+            std::map<std::string, std::pair<std::string, std::string>> getControlSources() const;
             const std::string& getOutput() const;
             const std::string& getPath() const;
             void compile();

@@ -18,6 +18,7 @@
 #include "MathUtil.h"
 #include "Camera.h"
 #include "types.h"
+#include "midi/Device.h"
 
 #include "VertexBuffer.h"
 #include "VertexArray.h"
@@ -181,6 +182,7 @@ int main(int argc, const char** argv) {
     }
 
     std::map<std::string, std::shared_ptr<frag::Media>> media = parser.getMedia();
+    std::map<std::string, std::shared_ptr<frag::midi::Device>> controllers = parser.getControllers();
 
     // Our run loop
     std::string last_err = "";
@@ -201,6 +203,20 @@ int main(int argc, const char** argv) {
             mod->bind();
 
             std::shared_ptr<frag::ShaderProgram> program = mod->getShaderProgram();
+
+            for (const auto& kv : mod->getControlSources()) {
+                const std::string& name = kv.first;
+                const std::string& controller_name = kv.second.first;
+                const std::string& control_name = kv.second.second;
+
+                if (controllers.count(controller_name) == 0) {
+                    throw std::runtime_error("Unknown controller of name '" + controller_name + "' referenced");
+                }
+
+                const auto& controller = controllers.at(controller_name);
+                const std::string uni_name = frag::Module::toChannelName(name);
+                program->setUniform(uni_name, controller->getControl(control_name));
+            }
 
             unsigned int slot = 0;
             for (const auto& kv : mod->getTextureSources()) {
@@ -223,6 +239,7 @@ int main(int argc, const char** argv) {
                     glUniform1i(id, slot);
                     slot++;
                 });
+
             }
 
             program->setUniform("iTime", [time](GLint& id) {
