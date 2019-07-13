@@ -175,19 +175,23 @@ int main(int argc, const char** argv) {
     GLCall(glBindBuffer(GL_ARRAY_BUFFER, 0));
 
     std::vector<std::shared_ptr<frag::Module>> modules = parser.getModules();
-    std::map<std::string, std::shared_ptr<frag::Media>> modules_output;
-    // Initialize values
-    for (const auto& mod : modules) {
-        modules_output[mod->getOutput()] = mod->getLastOutTex();
-    }
-
     std::map<std::string, std::shared_ptr<frag::Media>> media = parser.getMedia();
     std::map<std::string, std::shared_ptr<frag::midi::Device>> controllers = parser.getControllers();
+    std::shared_ptr<frag::ValueStore> store = parser.getValueStore();
+
+    std::map<std::string, std::shared_ptr<frag::Media>> modules_output;
+
+    // Initialize values
+    for (const auto& mod : modules) {
+        mod->compile(store);
+        store->set(frag::Address(mod->getOutput()), mod->getLastOutTex());
+    }
+
+    for (const auto& kv : media) {
+        store->set(frag::Address(kv.first), kv.second);
+    }
 
     // Our run loop
-    std::string last_err = "";
-    std::unordered_set<std::string> last_warnings;
-    bool first_pass = true;
     unsigned int iter = 0;
     double last_time = glfwGetTime();
     while (!glfwWindowShouldClose(window)) {
@@ -195,94 +199,31 @@ int main(int argc, const char** argv) {
 
         // We will be treating this like an int when passing to shader
         iter = (iter + 1) % INT_MAX;
+        store->set(frag::Address("iteration"), frag::Value(static_cast<float>(iter)));
 
-        double time = glfwGetTime();
+        for (const auto& kv : controllers) {
+            const std::string& controller_name = kv.first;
+            for (const frag::midi::Control& ctrl : kv.second->getControls()) {
+                store->set(frag::Address(controller_name, ctrl.name), ctrl);
+            }
+        }
 
         for (size_t i=0; i < modules.size(); i++) {
             auto& mod = modules.at(i);
             mod->bind();
-
-            std::shared_ptr<frag::ShaderProgram> program = mod->getShaderProgram();
-
-            for (const auto& kv : mod->getControlSources()) {
-                const std::string& name = kv.first;
-                const std::string& controller_name = kv.second.first;
-                const std::string& control_name = kv.second.second;
-
-                if (controllers.count(controller_name) == 0) {
-                    throw std::runtime_error("Unknown controller of name '" + controller_name + "' referenced");
-                }
-
-                const auto& controller = controllers.at(controller_name);
-                const std::string uni_name = frag::Module::toChannelName(name);
-                program->setUniform(uni_name, controller->getControl(control_name));
-            }
-
-            unsigned int slot = 0;
-            for (const auto& kv : mod->getTextureSources()) {
-                const std::string& dest = kv.first;
-                const std::string& src = kv.second;
-
-                std::shared_ptr<frag::Media> tex = nullptr;
-
-                if (media.count(src)) {
-                    tex = media.at(src);
-                } else if (modules_output.count(src)) {
-                    tex = modules_output.at(src);
-                } else {
-                    throw std::runtime_error(
-                            "Module mapped input '" + dest + "' to non-existent '" + src + "'");
-                }
-
-                program->setUniform(frag::Module::toChannelName(dest), [&tex, &slot](GLint& id) {
-                    tex->bind(slot);
-                    glUniform1i(id, slot);
-                    slot++;
-                });
-
-            }
-
-            program->setUniform("iTime", [time](GLint& id) {
-                glUniform1f(id, static_cast<float>(time));
-            });
-
-            program->setUniform("iResolution", [resolution](GLint& id) {
-                glUniform2f(
-                    id,
-                    static_cast<float>(resolution.width),
-                    static_cast<float>(resolution.height)
-                );
-            });
-
-            program->setUniform("frame", [iter](GLint& id) {
-                glUniform1i(id, static_cast<int>(iter));
-            });
-
-            program->setUniform("firstPass", [first_pass](GLint& id) {
-                glUniform1i(id, first_pass);
-            });
-
-            program->setUniform("lastOut", [&slot, &mod](GLint& id) {
-                mod->getLastOutTex()->bind(slot);
-                glUniform1i(id, slot);
-                slot++;
-            });
-
-            // Print unused uniforms for debugging
-            /*
-            for (auto const u : program->getUnsetUniforms()) {
-                std::cout << u << std::endl;
-            }
-            std::cout << "----" << std::endl;
-            */
+            mod->setValues(store);
 
             glViewport(0,0, resolution.width, resolution.height);
 
             // Draw our vertices
             glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+            // Unbind and swap output/input textures
             mod->unbind();
-            modules_output[mod->getOutput()] = mod->getLastOutTex();
+
+            store->set(frag::Address(mod->getOutput()), mod->getLastOutTex());
         }
+
 
         // Calculate blit settings
         int win_width, win_height;
@@ -311,7 +252,6 @@ int main(int argc, const char** argv) {
 
         // Show buffer
         glfwSwapBuffers(window);
-        first_pass = false;
 
         for (auto& kv : media) {
             kv.second->update();
@@ -327,4 +267,18 @@ int main(int argc, const char** argv) {
     }
 
     return 0;
+
+    - output: o
+      path: shaders/edges.glsl
+      inputs:
+          img0: vid0
+          noise: n
+
+
+    - output: o
+      path: shaders/edges.glsl
+      inputs:
+          img0: vid0
+          noise: n
+
 }

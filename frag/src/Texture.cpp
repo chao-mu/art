@@ -25,17 +25,24 @@ namespace frag {
         });
     }
 
+    Resolution Texture::getResolution() {
+        Resolution res;
+
+        GLCall(glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &res.width));
+        GLCall(glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &res.height));
+
+        return res;
+    }
+
     void Texture::save(const std::string& path) {
         bind();
 
         GLint alignment;
         GLCall(glGetIntegerv(GL_PACK_ALIGNMENT, &alignment));
 
-        GLint width;
-        GLCall(glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &width));
-
-        GLint height;
-        GLCall(glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &height));
+        Resolution res = getResolution();
+        int width = res.width;
+        int height = res.height;
 
         // Load the actual image daata
         char* data = new char[width * height * 3];
@@ -59,7 +66,7 @@ namespace frag {
     void Texture::populate(GLint internal_format, GLsizei width, GLsizei height,
             GLenum format, GLenum type, const GLvoid* data) {
 
-        this->borrowBind([internal_format, width, height, format, type, data]() {
+        this->borrowBind([this, internal_format, width, height, format, type, data]() {
             GLCall(glTexImage2D(GL_TEXTURE_2D, 0, internal_format, width, height, 0, format, type, data));
         });
     }

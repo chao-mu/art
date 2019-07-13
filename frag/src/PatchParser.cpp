@@ -32,9 +32,13 @@
 #define MEDIA_TYPE_VIDEO "video"
 
 namespace frag {
-    PatchParser::PatchParser(const std::string& path) : path_(path) {}
+    PatchParser::PatchParser(const std::string& path) : path_(path), store_(std::make_shared<ValueStore>()) {}
 
-    std::map<std::string, std::shared_ptr<midi::Device>> PatchParser::getControllers() const {
+    std::shared_ptr<ValueStore> PatchParser::getValueStore() {
+        return store_;
+    }
+
+    std::map<std::string, std::shared_ptr<midi::Device>> PatchParser::getControllers() {
         const YAML::Node patch = YAML::LoadFile(path_);
         std::map<std::string, std::shared_ptr<midi::Device>> controllers;
 
@@ -61,7 +65,7 @@ namespace frag {
         return controllers;
     }
 
-    std::map<std::string, std::shared_ptr<Media>> PatchParser::getMedia() const {
+    std::map<std::string, std::shared_ptr<Media>> PatchParser::getMedia() {
         const YAML::Node patch = YAML::LoadFile(path_);
         std::map<std::string, std::shared_ptr<Media>> media;
 
@@ -72,6 +76,8 @@ namespace frag {
         for (const auto& kv : patch[KEY_MEDIAS]) {
             const std::string name = kv.first.as<std::string>();
             const YAML::Node& settings = kv.second;
+
+            store_->setIsMedia(Address(name), true);
 
             if (!settings[KEY_TYPE]) {
                 throw std::runtime_error("source '" + name + "' is missing type");
@@ -90,7 +96,35 @@ namespace frag {
         return media;
     }
 
-    std::vector<std::shared_ptr<Module>> PatchParser::getModules() const {
+    std::variant<std::monostate, Address, Value> readAddressOrValue(const YAML::Node& node) {
+        const std::regex addr_re(R"(^(\w+)(?:\.(\w+))?)");
+        std::smatch match;
+
+        bool b;
+        float f;
+        if (YAML::convert<bool>::decode(node, b)) {
+            return Value(b);
+        } else if (YAML::convert<float>::decode(node, f)) {
+            return Value(f);
+        } else if (node.IsSequence()) {
+            std::vector<float> v = {};
+
+            for (const auto& el : node) {
+                v.push_back(el.as<float>());
+            }
+
+            return Value(v);
+        }
+
+        const std::string str = node.as<std::string>();
+        if (std::regex_match(str, match, addr_re)) {
+            return Address(match[1], match[2]);
+        } else {
+            throw std::runtime_error("Expected address or value, found: " + node.as<std::string>());
+        }
+    }
+
+    std::vector<std::shared_ptr<Module>> PatchParser::getModules() {
         const YAML::Node patch = YAML::LoadFile(path_);
         std::vector<std::shared_ptr<Module>> modules;
 
@@ -106,6 +140,7 @@ namespace frag {
             }
 
             const std::string output = settings[KEY_OUTPUT].as<std::string>();
+            store_->setIsMedia(Address(output), true);
 
             if (!settings[KEY_PATH]) {
                 throw std::runtime_error("A module is missing path");
@@ -116,85 +151,28 @@ namespace frag {
             auto mod = std::make_shared<Module>(output, path, res);
 
             if (settings[KEY_INPUTS]) {
-                const std::regex numeric_re(R"(^-?\d+(?:\.\d+)?)");
-                const std::regex tex_re(R"(^(\w+)(?:\.([rgbaxyzw]{1,4}))?)");
-                const std::regex ctrl_re(R"(^(\w+)\.(\w+))");
-
                 for (const auto& input_kv : settings[KEY_INPUTS]) {
                     const std::string key = input_kv.first.as<std::string>();
                     const YAML::Node& value = input_kv.second;
 
-                    Module::Source src;
+                    Module::Param param;
 
-                    std::string svalue;
                     if (value.Type() == YAML::NodeType::Map) {
-                        svalue = value[KEY_INPUT].as<std::string>();
+                        param.value = readAddressOrValue(value[KEY_INPUT]);
 
                         if (value[KEY_AMP]) {
-                            src.amp = value[KEY_AMP].as<float>();
+                            param.amp = readAddressOrValue(value[KEY_AMP]);
                         }
 
                         if (value[KEY_SHIFT]) {
-                            src.shift = value[KEY_SHIFT].as<float>();
+                            param.shift = readAddressOrValue(value[KEY_SHIFT]);
                         }
-                    } else if (value.Type() != YAML::NodeType::Sequence) {
-                        svalue = value.as<std::string>();
+                    } else {
+                        param.value = readAddressOrValue(value);
                     }
 
-                    bool test_bool;
-                    float test_float;
-                    if (svalue != "" &&
-                            !YAML::convert<bool>::decode(value, test_bool) &&
-                            !YAML::convert<float>::decode(value, test_float)) {
-                        std::smatch match;
-                        if (std::regex_match(svalue, match, tex_re)) {
-                            src.tex_name = match[1];
-
-                            const std::string swiz = match[2];
-                            if (swiz.size() > 0) src.first = swiz[0];
-                            if (swiz.size() > 1) src.second = swiz[1];
-                            if (swiz.size() > 2) src.third = swiz[2];
-                            if (swiz.size() > 3) src.fourth = swiz[3];
-                        } else if (std::regex_match(svalue, match, ctrl_re)) {
-                            src.controller = match[1];
-                            src.control = match[2];
-                        } else {
-                            throw std::runtime_error("Invalid source specified for input " + key);
-                        }
-                    }
-
-                    mod->addSource(key, src);
+                    mod->setParam(key, param);
                 }
-            }
-
-            mod->compile();
-
-            if (settings[KEY_INPUTS]) {
-                mod->bind();
-                for (const auto& kv : settings[KEY_INPUTS]) {
-                    const std::string param_name = kv.first.as<std::string>();
-                    const YAML::Node& param_value = kv.second;
-
-                    auto program = mod->getShaderProgram();
-                    const std::string uni_name = Module::toChannelName(param_name);
-
-                    bool b;
-                    float f;
-                    if (YAML::convert<bool>::decode(param_value, b)) {
-                        program->setUniform(uni_name, b);
-                    } else if (YAML::convert<float>::decode(param_value, f)) {
-                        program->setUniform(uni_name, f);
-                    } else if (param_value.IsSequence()) {
-                        std::vector<float> v = {};
-
-                        for (const auto& el : param_value) {
-                            v.push_back(el.as<float>());
-                        }
-
-                        program->setUniform(uni_name, v);
-                    }
-                }
-                mod->unbind();
             }
 
             int repeat = 1;
@@ -205,6 +183,8 @@ namespace frag {
             for (int i = 0; i < repeat; i++) {
                 modules.push_back(mod);
             }
+
+
         }
 
         return modules;

@@ -49,7 +49,7 @@ namespace frag {
         ));
     }
 
-    std::string Module::toChannelName(const std::string name) {
+    std::string Module::toChannelName(const std::string& name) {
         return "se_channel_" + name;
     }
 
@@ -78,31 +78,13 @@ namespace frag {
         GLCall(glDrawBuffer(ping_pong_->getDestDrawBuf()));
     }
 
-    void Module::addSource(const std::string& input, Source src) {
-        sources_[input] = src;
-    }
+    void Module::setParam(const std::string& name, Param p) {
+        const std::string& chan_name = toChannelName(name);
+        uniforms_[chan_name] = p.value;
+        uniforms_[chan_name + "_amp"] = p.amp;
+        uniforms_[chan_name + "_shift"] = p.shift;
 
-    std::map<std::string, std::pair<std::string, std::string>> Module::getControlSources() const {
-        std::map<std::string, std::pair<std::string, std::string>> sources;
-        for (const auto& kv : sources_) {
-            const Source& src = kv.second;
-            if (src.controller != "") {
-                sources[kv.first] = std::make_pair(src.controller, src.control);
-            }
-        }
-
-        return sources;
-    }
-
-    std::map<std::string, std::string> Module::getTextureSources() const {
-        std::map<std::string, std::string> sources;
-        for (const auto& kv : sources_) {
-            if (kv.second.tex_name != "") {
-                sources[kv.first] = kv.second.tex_name;
-            }
-        }
-
-        return sources;
+        params_[name] = p;
     }
 
     const std::string& Module::getOutput() const {
@@ -117,10 +99,11 @@ namespace frag {
         return program_;
     }
 
-    void Module::compile() {
+    void Module::compile(std::shared_ptr<ValueStore> store) {
         std::string vert_shader = R"V(
             #version 410
 
+            out vec2 tc;
             out vec2 texcoord;
             out vec2 texcoordL;
             out vec2 texcoordR;
@@ -146,6 +129,7 @@ namespace frag {
                 uv = st - .5;
                 uv.x *= iResolution.x / iResolution.y;
 
+                tc = st;
                 texcoord = st;
                 texcoordL = st + vec2(-widthStep, 0);
                 texcoordR = st + vec2(widthStep, 0);
@@ -188,11 +172,18 @@ namespace frag {
                     const std::string def = match[3];
 
                     const std::string internal_name = toChannelName(name);
+                    const std::string internal_name_shift = internal_name + "_shift";
+                    const std::string internal_name_amp = internal_name + "_amp";
 
-                    bool defined = sources_.count(name) > 0;
-                    const Source src = sources_[name];
+                    bool defined = params_.count(name) > 0;
+                    std::optional<Address> addr_opt;
+                    if (defined && std::holds_alternative<Address>(params_.at(name).value)) {
+                        addr_opt = std::get<Address>(params_.at(name).value);
+                    }
 
-                    if (defined && src.tex_name != "") {
+                    bool is_texture = addr_opt.has_value() && store->isMedia(addr_opt.value());
+
+                    if (is_texture) {
                         frag_shader << "uniform sampler2D " << internal_name << ";\n";
                     } else {
                         frag_shader << "uniform " << type << " " << internal_name;
@@ -204,19 +195,33 @@ namespace frag {
                         frag_shader << ";\n";
                     }
 
+                    frag_shader << "uniform float " <<  internal_name_shift << " = 0;\n";
+                    frag_shader << "uniform float " <<  internal_name_amp << " = 1;\n";
+
                     frag_shader << type << " channel_" << name << "(in vec2 uv) {\n";
-                    if (defined && src.tex_name != "") {
+                    if (is_texture && addr_opt.has_value()) {
                         frag_shader << "   return " << "texture(" << internal_name << ", uv)";
+                        std::string swiz = addr_opt.value().getField();
+
+                        // Expand the swizzle
+                        if (swiz.empty()) {
+                            swiz = "xyzw";
+                        }
+
+                        while (swiz.length() < 4) {
+                            swiz += swiz.back();
+                        }
+
                         if (type == "float") {
-                            frag_shader << "." << src.first;
+                            frag_shader << "." << swiz[0];
                         } else if (type == "vec2") {
-                            frag_shader << "." << src.first << src.second;
+                            frag_shader << "." << swiz[0] << swiz[1];
                         } else if (type == "vec3") {
-                            frag_shader << "." << src.first << src.second << src.third;
+                            frag_shader << "." << swiz[0] << swiz[1] << swiz[2];
                         } else if (type == "vec4") {
-                            frag_shader << "." << src.first << src.second << src.third << src.fourth;
+                            frag_shader << "." << swiz[0] << swiz[1] << swiz[2] << swiz[3];
                         } else if (type == "bool") {
-                            frag_shader << "." << src.first << " > 0.5";
+                            frag_shader << "." << swiz[0] << " > 0.5";
                         } else {
                             throw std::runtime_error("unsupported channel type '" + type + "'");
                         }
@@ -224,10 +229,8 @@ namespace frag {
                         frag_shader << "  return " << internal_name;
                     }
 
-                    if (defined && type != "bool") {
-                        const Source& src = sources_.at(name);
-
-                        frag_shader << " * " << src.amp << " + " << src.shift;
+                    if (type != "bool") {
+                        frag_shader << " * " << internal_name_amp << " + " << internal_name_shift;
                     }
 
                     frag_shader << ";\n";
@@ -243,11 +246,109 @@ namespace frag {
             frag_shader << "#line " << line_no + 1 << "\n";
         }
 
-        //std::cout << frag_shader.str() << std::endl;
-
         program_->loadShaderStr(GL_VERTEX_SHADER, vert_shader, "internal-vert.glsl");
         program_->loadShaderStr(GL_FRAGMENT_SHADER, frag_shader.str(), path_);
         program_->compile();
     }
-}
 
+    void Module::setValues(std::shared_ptr<ValueStore> store) {
+        unsigned int slot = 0;
+
+        for (const auto& kv : program_->getUniformTypes()) {
+            const std::string& uni_name = kv.first;
+            GLint gl_type = kv.second;
+
+            // Do we have info about this uniform?
+            if (uniforms_.count(uni_name) == 0) {
+                continue;
+            }
+
+            std::variant<std::monostate, Address, Value>& addr_or_val = uniforms_.at(uni_name);
+
+            std::optional<Value> val_opt;
+            std::optional<Address> addr_opt;
+            if (std::holds_alternative<Value>(addr_or_val)) {
+                val_opt = std::get<Value>(addr_or_val);
+            } else if (std::holds_alternative<Address>(addr_or_val)) {
+                addr_opt = std::get<Address>(addr_or_val);
+                val_opt = store->getValue(addr_opt.value());
+            }
+
+            if (val_opt.has_value()) {
+                Value val = val_opt.value();
+                switch (gl_type) {
+                    case GL_FLOAT: {
+                        float v = val.getFloat();
+                        program_->setUniform(uni_name, [&v](GLint& id) {
+                            glUniform1f(id, v);
+                        });
+                        break;
+                    }
+                    case GL_INT: {
+                        int v = val.getInt();
+                        program_->setUniform(uni_name, [&v](GLint& id) {
+                            glUniform1i(id, v);
+                        });
+                        break;
+                    }
+                    case GL_BOOL: {
+                        bool v = val.getBool();
+                        program_->setUniform(uni_name, [&v](GLint& id) {
+                            glUniform1i(id, v ? 1 : 0);
+                        });
+                        break;
+                    }
+                    case GL_FLOAT_VEC2: {
+                        std::vector<float> v = val.getVec4();
+                        program_->setUniform(uni_name, [&v](GLint& id) {
+                            glUniform2f(id, v[0], v[1]);
+                        });
+
+                        break;
+                    }
+                    case GL_FLOAT_VEC3: {
+                        std::vector<float> v = val.getVec4();
+                        program_->setUniform(uni_name, [&v](GLint& id) {
+                            glUniform3f(id, v[0], v[1], v[2]);
+                        });
+
+                        break;
+                    }
+                    case GL_FLOAT_VEC4: {
+                        std::vector<float> v = val.getVec4();
+                        program_->setUniform(uni_name, [&v](GLint& id) {
+                            glUniform4f(id, v[0], v[1], v[2], v[3]);
+                        });
+
+                        break;
+                    }
+                }
+            } else if (addr_opt.has_value() && store->isMedia(addr_opt.value())) {
+                std::shared_ptr<Media> tex = store->getMedia(addr_opt.value());
+                program_->setUniform(uni_name, [&tex, &slot](GLint& id) {
+                    tex->bind(slot);
+                    glUniform1i(id, slot);
+                    slot++;
+                });
+            }
+        }
+
+        program_->setUniform("iTime", [](GLint& id) {
+            glUniform1f(id, static_cast<float>(glfwGetTime()));
+        });
+
+        program_->setUniform("iResolution", [this](GLint& id) {
+            glUniform2f(
+                id,
+                static_cast<float>(resolution_.width),
+                static_cast<float>(resolution_.height)
+            );
+        });
+
+        program_->setUniform("lastOut", [this, &slot](GLint& id) {
+            getLastOutTex()->bind(slot);
+            glUniform1i(id, slot);
+            slot++;
+        });
+    }
+}

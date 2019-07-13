@@ -12,9 +12,6 @@
 // OpenGL
 #include <GL/glew.h>
 
-// Ours
-#include "midi/Control.h"
-
 namespace frag {
     class ShaderProgram {
         public:
@@ -36,13 +33,11 @@ namespace frag {
             // Retrieves a uniform's type
             std::optional<GLenum> getUniformType(const std::string& name);
 
+            // Retrieves a map of uniform names to uniform types;
+            std::map<std::string, GLenum> getUniformTypes();
 
             // Sets a uniform and marks it as being in use
             void setUniform(const std::string& name, std::function<void(GLint&)> f);
-            void setUniform(const std::string& name, const midi::Control& v);
-            void setUniform(const std::string& name, bool v);
-            void setUniform(const std::string& name, float v);
-            void setUniform(const std::string& name, std::vector<float> in_v);
 
             // Marks a uniform as being in use to prevent a warning of it not being in use
             void markUniformInUse(const std::string& name);

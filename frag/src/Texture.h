@@ -10,6 +10,7 @@
 // Ours
 #include "GLUtil.h"
 #include "Media.h"
+#include "types.h"
 
 namespace frag {
     class Texture : public Media {
@@ -24,12 +25,12 @@ namespace frag {
                     GLenum format, GLenum type, const GLvoid * data);
             void populate(cv::Mat& frame);
             void setScaleFilter(GLint min_param, GLint mag_param);
+            Resolution getResolution();
 
             GLuint getID() const;
 
         private:
             void borrowBind(std::function<void()> f);
-
             unsigned int glID_ = 0;
     };
 }

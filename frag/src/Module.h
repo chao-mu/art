@@ -3,54 +3,55 @@
 
 // STL
 #include <string>
+#include <variant>
 
 // Ours
 #include "GLUtil.h"
 #include "ShaderProgram.h"
 #include "PingPongTexture.h"
 #include "types.h"
+#include "Address.h"
+#include "Value.h"
+#include "ValueStore.h"
 
 namespace frag {
     class Module {
         public:
-            struct Source {
-                std::string tex_name;
-                std::string controller;
-                std::string control;
-                char first = 'r';
-                char second = 'g';
-                char third = 'b';
-                char fourth = 'a';
-                float amp = 1;
-                float shift = 0;
-                bool is_texture = false;
+            struct Param {
+                public:
+                    std::variant<std::monostate, Address, Value> value;
+                    std::variant<std::monostate, Address, Value> amp;
+                    std::variant<std::monostate, Address, Value> shift;
             };
-
-            static std::string toChannelName(const std::string name);
 
             Module(const std::string& output, const std::string& path, const Resolution& res);
 
-            void addSource(const std::string& input, Source src);
-            std::map<std::string, std::string> getTextureSources() const;
-            std::map<std::string, std::pair<std::string, std::string>> getControlSources() const;
+            void setParam(const std::string& input, Param src);
             const std::string& getOutput() const;
             const std::string& getPath() const;
-            void compile();
             std::shared_ptr<ShaderProgram> getShaderProgram();
-            void bind();
-            void unbind();
             GLuint getFBO();
             GLenum getReadableBuf();
             std::shared_ptr<Texture> getLastOutTex();
 
+            void setValues(std::shared_ptr<ValueStore> store);
+
+            void bind();
+            void unbind();
+
+            void compile(std::shared_ptr<ValueStore> store);
+
         private:
             const std::string output_;
             const std::string path_;
-            std::map<std::string, Source> sources_;
+            std::map<std::string, Param> params_;
+            std::map<std::string, std::variant<std::monostate, Address, Value>> uniforms_;
             std::shared_ptr<PingPongTexture> ping_pong_;
             GLuint fbo_;
             const Resolution resolution_;
             std::shared_ptr<ShaderProgram> program_;
+
+            static std::string toChannelName(const std::string& name);
     };
 }
 

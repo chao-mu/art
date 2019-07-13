@@ -28,6 +28,7 @@ namespace frag {
                 void update();
 
                 Control getControl(const std::string& name);
+                std::vector<Control> getControls();
 
             private:
                 void load();

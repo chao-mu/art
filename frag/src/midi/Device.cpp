@@ -41,6 +41,17 @@ namespace frag {
             thread_ = std::thread(&Device::loop, this);
         }
 
+        std::vector<Control> Device::getControls() {
+            std::lock_guard<std::mutex> guard(controls_mutex_);
+
+            std::vector<Control> ctrls;
+            for (const auto& kv : controls_) {
+                ctrls.push_back(kv.second);
+            }
+
+            return ctrls;
+        }
+
         Control Device::getControl(const std::string& name) {
             std::lock_guard<std::mutex> guard(controls_mutex_);
             Control ctrl = controls_[name];
