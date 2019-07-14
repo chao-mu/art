@@ -25,7 +25,7 @@ namespace frag {
                     GLenum format, GLenum type, const GLvoid * data);
             void populate(cv::Mat& frame);
             void setScaleFilter(GLint min_param, GLint mag_param);
-            Resolution getResolution();
+            virtual Resolution getResolution() override;
 
             GLuint getID() const;
 

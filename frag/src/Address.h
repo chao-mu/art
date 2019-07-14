@@ -9,14 +9,19 @@ namespace frag {
         public:
             Address(const std::string& name);
             Address(const std::string& name, const std::string& field);
+            Address(const std::string& name, const std::string& field, const std::string& sub_field);
 
             std::string getField() const;
+            std::string getSubField() const;
             std::string getName() const;
-            bool operator <(const Address& b) const;
 
+            Address withSubField(const std::string& sub);
+
+            bool operator <(const Address& b) const;
         private:
             std::string name_;
             std::string field_;
+            std::string sub_field_;
     };
 }
 #endif

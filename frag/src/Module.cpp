@@ -49,6 +49,10 @@ namespace frag {
         ));
     }
 
+    Resolution Module::getResolution() {
+        return resolution_;
+    }
+
     std::string Module::toChannelName(const std::string& name) {
         return "se_channel_" + name;
     }
@@ -174,6 +178,7 @@ namespace frag {
                     const std::string internal_name = toChannelName(name);
                     const std::string internal_name_shift = internal_name + "_shift";
                     const std::string internal_name_amp = internal_name + "_amp";
+                    const std::string internal_name_res = internal_name + "_res";
 
                     bool defined = params_.count(name) > 0;
                     std::optional<Address> addr_opt;
@@ -197,6 +202,19 @@ namespace frag {
 
                     frag_shader << "uniform float " <<  internal_name_shift << " = 0;\n";
                     frag_shader << "uniform float " <<  internal_name_amp << " = 1;\n";
+                    frag_shader << "uniform vec2 " << internal_name_res << ";\n";
+
+                    // Define texture coordinates
+                    frag_shader << "#define " << name << "_tc ";
+                    if (is_texture && addr_opt.has_value()) {
+                        frag_shader << "(gl_FragCoord.xy / " << internal_name_res << ")";
+                        uniforms_[internal_name_res] = Address(addr_opt.value().getName(), "resolution");
+                    } else {
+                        frag_shader << "vec2(0)";
+                    }
+                    frag_shader << "\n";
+
+                    frag_shader << "#define " << name << "_res " << internal_name_res << "\n";
 
                     frag_shader << type << " channel_" << name << "(in vec2 uv) {\n";
                     if (is_texture && addr_opt.has_value()) {
@@ -235,6 +253,9 @@ namespace frag {
 
                     frag_shader << ";\n";
                     frag_shader << "}\n";
+
+                    frag_shader << type << " channel_" << name << "() { return channel_" <<
+                        name << "(" << name << "_tc); }\n";
                 } else {
                     throw std::runtime_error("Unable to parse channel definition line: " + line);
                 }
@@ -251,7 +272,7 @@ namespace frag {
         program_->compile();
     }
 
-    void Module::setValues(std::shared_ptr<ValueStore> store) {
+    void Module::setValues(std::shared_ptr<ValueStore> store, bool first_pass) {
         unsigned int slot = 0;
 
         for (const auto& kv : program_->getUniformTypes()) {
@@ -273,6 +294,12 @@ namespace frag {
                 addr_opt = std::get<Address>(addr_or_val);
                 val_opt = store->getValue(addr_opt.value());
             }
+
+            /*
+            if (val_opt.has_value() && addr_opt.has_value() && addr_opt.value().getName() == "midi") {
+                std::cout << val_opt.value().getFloat() << std::endl;
+            }
+            */
 
             if (val_opt.has_value()) {
                 Value val = val_opt.value();
@@ -332,6 +359,11 @@ namespace frag {
                 });
             }
         }
+
+        program_->setUniform("firstPass", [first_pass](GLint& id) {
+            glUniform1i(id, static_cast<int>(first_pass));
+        });
+
 
         program_->setUniform("iTime", [](GLint& id) {
             glUniform1f(id, static_cast<float>(glfwGetTime()));

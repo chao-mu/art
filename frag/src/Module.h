@@ -33,8 +33,9 @@ namespace frag {
             GLuint getFBO();
             GLenum getReadableBuf();
             std::shared_ptr<Texture> getLastOutTex();
+            Resolution getResolution();
 
-            void setValues(std::shared_ptr<ValueStore> store);
+            void setValues(std::shared_ptr<ValueStore> store, bool first_pass);
 
             void bind();
             void unbind();

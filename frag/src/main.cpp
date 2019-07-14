@@ -175,6 +175,11 @@ int main(int argc, const char** argv) {
     GLCall(glBindBuffer(GL_ARRAY_BUFFER, 0));
 
     std::vector<std::shared_ptr<frag::Module>> modules = parser.getModules();
+    if (modules.empty()) {
+        std::cerr << "No modules specified. Nothing to do." << std::endl;
+        return 1;
+    }
+
     std::map<std::string, std::shared_ptr<frag::Media>> media = parser.getMedia();
     std::map<std::string, std::shared_ptr<frag::midi::Device>> controllers = parser.getControllers();
     std::shared_ptr<frag::ValueStore> store = parser.getValueStore();
@@ -184,16 +189,18 @@ int main(int argc, const char** argv) {
     // Initialize values
     for (const auto& mod : modules) {
         mod->compile(store);
-        store->set(frag::Address(mod->getOutput()), mod->getLastOutTex());
-    }
+        const std::string out_name = mod->getOutput();
+        store->set(frag::Address(out_name), mod->getLastOutTex());
 
-    for (const auto& kv : media) {
-        store->set(frag::Address(kv.first), kv.second);
+        const frag::Resolution res = mod->getResolution();
+        store->set(frag::Address(out_name, "resolution"),
+                frag::Value(std::vector({static_cast<float>(res.width), static_cast<float>(res.height)})));
     }
 
     // Our run loop
     unsigned int iter = 0;
     double last_time = glfwGetTime();
+    bool first_pass = true;
     while (!glfwWindowShouldClose(window)) {
         GLCall(glfwPollEvents());
 
@@ -208,10 +215,22 @@ int main(int argc, const char** argv) {
             }
         }
 
+        for (const auto& kv : media) {
+            const std::string name = kv.first;
+            std::shared_ptr<frag::Media> m = kv.second;
+            store->set(frag::Address(name), m);
+
+            const frag::Resolution res = m->getResolution();
+
+            store->set(frag::Address(name, "resolution"),
+                    frag::Value(std::vector({static_cast<float>(res.width), static_cast<float>(res.height)})));
+        }
+
+
         for (size_t i=0; i < modules.size(); i++) {
             auto& mod = modules.at(i);
             mod->bind();
-            mod->setValues(store);
+            mod->setValues(store, first_pass);
 
             glViewport(0,0, resolution.width, resolution.height);
 
@@ -222,6 +241,9 @@ int main(int argc, const char** argv) {
             mod->unbind();
 
             store->set(frag::Address(mod->getOutput()), mod->getLastOutTex());
+            const frag::Resolution res = mod->getResolution();
+            store->set(frag::Address(mod->getOutput(), "resolution"),
+                frag::Value(std::vector({static_cast<float>(res.width), static_cast<float>(res.height)})));
         }
 
 
@@ -264,21 +286,9 @@ int main(int argc, const char** argv) {
             std::cout << "Elapsed: " << current_time - last_time << std::endl;
             last_time = glfwGetTime();
         }
+
+        first_pass = false;
     }
 
     return 0;
-
-    - output: o
-      path: shaders/edges.glsl
-      inputs:
-          img0: vid0
-          noise: n
-
-
-    - output: o
-      path: shaders/edges.glsl
-      inputs:
-          img0: vid0
-          noise: n
-
 }

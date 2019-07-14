@@ -13,10 +13,13 @@ namespace frag {
         };
 
         struct Control {
+            bool isPressed();
+
             std::string name = "";
             ControlType type = CONTROL_TYPE_UNKNOWN;
-            bool pressed = false;
+            bool toggle = false;
             unsigned char value = 0;
+            unsigned char last_value = 0;
             unsigned char low = 0;
             unsigned char high = 0;
             unsigned char function = 0;

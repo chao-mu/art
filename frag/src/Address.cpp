@@ -2,22 +2,33 @@
 
 
 namespace frag {
-    Address::Address(const std::string& name) : Address(name, "") {
-    }
+    Address::Address(const std::string& name) : Address(name, "") {}
 
-    Address::Address(const std::string& name, const std::string& field) : name_(name), field_(field) {
-    }
+    Address::Address(const std::string& name, const std::string& field) : Address(name, field, "") {}
+
+    Address::Address(const std::string& name, const std::string& field, const std::string& sub_field) :
+        name_(name), field_(field), sub_field_(sub_field) {}
+
 
     std::string Address::getField() const {
         return field_;
     }
 
+    std::string Address::getSubField() const {
+        return sub_field_;
+    }
+
     std::string Address::getName() const {
         return name_;
     }
+
+    Address Address::withSubField(const std::string& sub) {
+        return Address(getName(), getField(), sub);
+    }
     // This can often be seen written as
     bool Address::operator <(const Address& b) const {
-        return (name_ < b.name_) ||
-            ((name_ == b.name_) && (field_ < b.field_));
+        // HACK, if addresses have !!! in them we're messed up
+        return (name_ + "!!!" + field_ + "!!!" + sub_field_) <
+            (b.name_ + "!!!" + b.field_ + "!!!" + b.sub_field_);
     }
 }

@@ -2,6 +2,8 @@
 
 #include "MathUtil.h"
 
+#include <iostream>
+
 namespace frag {
     bool ValueStore::isMedia(const Address& addr) const {
         const std::string name = addr.getName();
@@ -40,7 +42,8 @@ namespace frag {
 
     void ValueStore::set(Address addr, midi::Control c) {
         if (c.type == midi::CONTROL_TYPE_BUTTON) {
-            values_[addr] = Value(c.pressed);
+            values_[addr] = Value(c.isPressed());
+            values_[addr.withSubField("toggle")] = Value(c.toggle);
         } else {
             values_[addr] = Value(remap(c.value, c.low, c.high, 0, 1));
         }

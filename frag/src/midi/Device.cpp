@@ -112,7 +112,12 @@ namespace frag {
                     for (auto& kv : controls_) {
                         auto& control = kv.second;
                         if (control.function == msg.getFunction() && control.type == type && msg.getChannel() == control.channel) {
+                            control.last_value = control.value;
                             control.value = msg.getValue();
+
+                            if (control.isPressed() && control.last_value <= 0.5) {
+                                control.toggle = !control.toggle;
+                            }
                         }
                     }
                 }

@@ -28,8 +28,10 @@ namespace frag {
     Resolution Texture::getResolution() {
         Resolution res;
 
-        GLCall(glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &res.width));
-        GLCall(glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &res.height));
+        this->borrowBind([&res]() {
+            GLCall(glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &res.width));
+            GLCall(glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &res.height));
+        });
 
         return res;
     }

@@ -3,7 +3,6 @@
 // STL
 #include <stdexcept>
 #include <optional>
-#include <regex>
 
 // OpenCV
 #include <opencv2/opencv.hpp>
@@ -97,16 +96,7 @@ namespace frag {
     }
 
     std::variant<std::monostate, Address, Value> readAddressOrValue(const YAML::Node& node) {
-        const std::regex addr_re(R"(^(\w+)(?:\.(\w+))?)");
-        std::smatch match;
-
-        bool b;
-        float f;
-        if (YAML::convert<bool>::decode(node, b)) {
-            return Value(b);
-        } else if (YAML::convert<float>::decode(node, f)) {
-            return Value(f);
-        } else if (node.IsSequence()) {
+        if (node.IsSequence()) {
             std::vector<float> v = {};
 
             for (const auto& el : node) {
@@ -117,11 +107,30 @@ namespace frag {
         }
 
         const std::string str = node.as<std::string>();
-        if (std::regex_match(str, match, addr_re)) {
-            return Address(match[1], match[2]);
-        } else {
-            throw std::runtime_error("Expected address or value, found: " + node.as<std::string>());
+
+        bool b;
+        float f;
+        if (YAML::convert<bool>::decode(node, b) && str != "n" && str != "y") {
+            return Value(b);
         }
+
+        if (YAML::convert<float>::decode(node, f)) {
+            return Value(f);
+        }
+
+        std::istringstream iss(str);
+        std::vector<std::string> tokens;
+        tokens.resize(3);
+        std::string token;
+        for (int i = 0; i < 4; i++) {
+            if (std::getline(iss, token, '.')) {
+                tokens[i] = token;
+            } else {
+                break;
+            }
+        }
+
+        return Address(tokens[0], tokens[1], tokens[2]);
     }
 
     std::vector<std::shared_ptr<Module>> PatchParser::getModules() {
