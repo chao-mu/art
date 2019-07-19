@@ -58,3 +58,7 @@ target_link_libraries(${PROJECT_NAME} ${LIBAV_LIBRARIES})
 find_package(RTMIDI REQUIRED)
 include_directories(${RTMIDI_INCLUDE_DIRS})
 target_link_libraries(${PROJECT_NAME} ${RTMIDI_LIBRARIES})
+
+# SFML
+find_package(SFML 2.5 COMPONENTS audio REQUIRED)
+target_link_libraries(${PROJECT_NAME} sfml-audio)

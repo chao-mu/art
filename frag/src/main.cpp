@@ -12,6 +12,9 @@
 // OpenCV
 #include <opencv2/opencv.hpp>
 
+// SFML
+#include <SFML/Audio.hpp>
+
 // Ours
 #include "GLUtil.h"
 #include "ShaderProgram.h"
@@ -83,6 +86,7 @@ int main(int argc, const char** argv) {
     TCLAP::ValueArg<std::string> vert_arg("", "vert", "path to vertex shader", false, "vert.glsl", "string", cmd);
     TCLAP::ValueArg<std::string> patch_arg("i", "patch", "path to yaml patch", false, "patch.yml", "string", cmd);
     TCLAP::ValueArg<std::string> img_out_arg("o", "image-out", "output image path", false, "", "string", cmd);
+    TCLAP::ValueArg<std::string> sound_arg("s", "sound-path", "path to sound file", false, "", "string", cmd);
     TCLAP::ValueArg<int> height_arg("", "height", "window height (width will be calculated automatically)", false, 720, "int", cmd);
     TCLAP::ValueArg<int> pause_arg("p", "pause", "miliseconds to pause between frames", false, 0, "int", cmd);
     TCLAP::SwitchArg debug_timer_arg("", "debug-timer", "debug time between frames", cmd);
@@ -96,6 +100,15 @@ int main(int argc, const char** argv) {
         return 1;
     }
 
+    sf::Music music;
+    const std::string sound_path = sound_arg.getValue();
+    if (!sound_path.empty()) {
+        if (!music.openFromFile(sound_path)) {
+            // openFromFile displays its own helpful error, so none here
+            return 1;
+        }
+    }
+
     out_path = img_out_arg.getValue();
 
     // Set GLFW error callback
@@ -103,7 +116,7 @@ int main(int argc, const char** argv) {
 
     // Initialize the GLFW
     if (!glfwInit()) {
-        fprintf(stderr, "Failed to initialize GLFW!!!\n");
+        std::cerr << "Failed to initialize GLFW!!!" << std::endl;
         return 1;
     }
 
@@ -195,6 +208,11 @@ int main(int argc, const char** argv) {
         const frag::Resolution res = mod->getResolution();
         store->set(frag::Address(out_name, "resolution"),
                 frag::Value(std::vector({static_cast<float>(res.width), static_cast<float>(res.height)})));
+    }
+
+
+    if (!sound_path.empty()) {
+        music.play();
     }
 
     // Our run loop
