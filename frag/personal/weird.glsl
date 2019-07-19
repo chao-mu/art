@@ -2,12 +2,13 @@
 
 layout (location = 0) out vec4 FragColor;
 
-#pragma include util.inc
+#pragma include ../shaders/util.inc
 
+// Image
 #pragma channel vec3 img0
 #pragma channel vec2 noise vec2(0, 0)
-#pragma channel float mix 1
-#pragma channel bool negate false
+#pragma channel float a 0.5
+#pragma channel float b 0.51
 
 uniform float iTime;
 
@@ -49,14 +50,16 @@ vec3 applyKernel(in mat3 m) {
     )
 
 void main() {
-    vec3 a = applyKernel(KERNEL_SCHARR_X);
-    vec3 b = applyKernel(KERNEL_SCHARR_Y);
-	vec3 edge = sqrt((a * a) + (b * b));
-
-    if (channel_negate()) {
-        edge = vec3(1) - edge;
+    float edge_y = dot(applyKernel(KERNEL_SCHARR_X), vec3(1));
+    float edge_x = dot(applyKernel(KERNEL_SCHARR_Y), vec3(1));
+    if (edge_x < channel_a(texcoord)) {
+        FragColor.rgb = channel_img0(texcoord + vec2(0, 1 / iResolution.y));
+    } else if (edge_y < channel_b(texcoord)) {
+        FragColor.rgb = channel_img0(texcoord + vec2(1 / iResolution.x, 0));
+    } else {
+        FragColor.rgb = vec3(1);//channel_img0(texcoord);
     }
     
-    FragColor.rgb = mix(channel_img0(), edge, channel_mix());
+
     FragColor.a = 1;
 }

@@ -6,8 +6,8 @@ layout (location = 0) out vec4 FragColor;
 
 #pragma channel vec3 img0
 #pragma channel vec2 noise vec2(0, 0)
-#pragma channel float mix 1
-#pragma channel bool negate false
+#pragma float vec2 mix 1
+#pragma bool negate false
 
 uniform float iTime;
 
@@ -57,6 +57,5 @@ void main() {
         edge = vec3(1) - edge;
     }
     
-    FragColor.rgb = mix(channel_img0(), edge, channel_mix());
-    FragColor.a = 1;
+    FragColor.rgba = vec4(edge, 1);
 }

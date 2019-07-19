@@ -1,0 +1,87 @@
+resolution:
+    width: 1920
+    height: 1080
+
+controllers:
+    midi:
+        type: midi
+        path: midi/icon_icontrols.yml
+
+media:
+    mario_start:
+        type: image
+        path: ../content/mario-start.png
+
+    vid0:
+        type: video
+        path: /home/hackpoetic/tm/mario-1-1-rescale.avi
+
+    vid1:
+        type: video
+        path: /home/hackpoetic/tm/mario-1-2-rescale.mkv
+
+# Last output gets rendered
+modules:
+    - output: vid0
+      path: personal/center.glsl
+      inputs:
+          img0: vid0
+
+    - output: vid1
+      path: personal/center.glsl
+      inputs:
+          img0: vid1
+
+    - output: start
+      path: personal/trail_drop.glsl
+      inputs:
+          a: mario_start
+          b: start
+          x:
+            input: midi.f1
+            amp: -0.001
+          y:
+            input: midi.f2
+            amp: 0.001
+
+    - output: vid1
+      path: personal/knoty.glsl
+      inputs:
+          img0: vid1
+          amount: midi.f3
+
+    - output: vid0
+      path: shaders/transform.glsl
+      inputs:
+          img0: vid0
+          scale:
+              input: midi.e2
+              shift: 0.4
+
+    - output: mm
+      path: personal/mix_mario.glsl
+      inputs:
+          a: vid1
+          b: vid0
+          swap: midi.e2
+
+    - output: o
+      path: shaders/mix.glsl
+      inputs:
+          a: start
+          b: mm
+          mix: midi.e1
+
+    - output: n
+      path: shaders/noise.glsl
+      inputs:
+          amp: midi.f6
+
+    - output: o
+      path: shaders/edges.glsl
+      inputs:
+          img0: o
+          mix: midi.f5
+          noise:
+            input: n
+            amp: 0.5

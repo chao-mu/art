@@ -3,7 +3,7 @@
 layout (location = 0) out vec4 FragColor;
 
 // Image
-uniform sampler2D img0;
+#pragma channel vec3 img0
 
 uniform bool negate = false;
 
@@ -22,16 +22,16 @@ in vec2 texcoordB;
 in vec2 texcoordBL;
 in vec2 texcoordBR;
 
-vec4 applyKernel(sampler2D tex, in mat3 m) {
-    return m[0][2] * texture(tex, texcoordBL) +
-        m[1][2] * texture(tex, texcoordB) +
-        m[2][2] * texture(tex, texcoordBR) +
-        m[0][1] * texture(tex, texcoordL) +
-        m[1][1] * texture(tex, texcoord) +
-        m[2][1] * texture(tex, texcoordR) +
-        m[0][0] * texture(tex, texcoordTL) +
-        m[1][0] * texture(tex, texcoordT) +
-        m[2][0] * texture(tex, texcoordTR);
+vec3 applyKernel(mat3 m) {
+    return m[0][2] * channel_img0(texcoordBL) +
+        m[1][2] * channel_img0(texcoordB) +
+        m[2][2] * channel_img0(texcoordBR) +
+        m[0][1] * channel_img0(texcoordL) +
+        m[1][1] * channel_img0(texcoord) +
+        m[2][1] * channel_img0(texcoordR) +
+        m[0][0] * channel_img0(texcoordTL) +
+        m[1][0] * channel_img0(texcoordT) +
+        m[2][0] * channel_img0(texcoordTR);
 }
 
 #define KERNEL_BOX_BLUR \
@@ -42,6 +42,6 @@ vec4 applyKernel(sampler2D tex, in mat3 m) {
     )
 
 void main() {
-    vec3 blur = applyKernel(img0, KERNEL_BOX_BLUR).rgb / .9;
+    vec3 blur = applyKernel(KERNEL_BOX_BLUR).rgb / .9;
     FragColor.rgba = vec4(blur, 1);
 }
