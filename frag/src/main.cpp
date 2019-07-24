@@ -19,7 +19,7 @@
 #include "GLUtil.h"
 #include "ShaderProgram.h"
 #include "MathUtil.h"
-#include "Camera.h"
+#include "Video.h"
 #include "types.h"
 #include "midi/Device.h"
 

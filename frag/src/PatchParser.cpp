@@ -9,10 +9,11 @@
 
 // Ours
 #include "Texture.h"
-#include "Camera.h"
+#include "Video.h"
 
 #define KEY_MEDIAS "media"
 #define KEY_MODULES "modules"
+#define KEY_PLAYBACK "playback"
 #define KEY_TYPE "type"
 #define KEY_OUTPUT "output"
 #define KEY_INPUTS "inputs"
@@ -241,13 +242,20 @@ namespace frag {
 
         const std::string path = settings[KEY_PATH].as<std::string>();
 
-        auto vid = std::make_shared<Camera>(path);
+        auto vid = std::make_shared<Video>(path);
         if (settings[KEY_SCALE_FILTER]) {
             const std::string filter = settings[KEY_SCALE_FILTER].as<std::string>();
             if (filter == "nearest") {
                 vid->setScaleFilter(GL_NEAREST, GL_NEAREST);
             } else {
                 throw std::runtime_error("Invalid scale filter");
+            }
+        }
+
+        if (settings[KEY_PLAYBACK]) {
+            const std::string playback = settings[KEY_PLAYBACK].as<std::string>();
+            if (playback == "reverse") {
+                vid->setReverse(true);
             }
         }
 
