@@ -40,9 +40,11 @@ modules:
           x:
             input: midi.f1
             amp: -0.001
+            shift: -0.0009
           y:
             input: midi.f2
             amp: 0.001
+            shift: 0.0009
 
     - output: vid1
       path: personal/knoty.glsl
@@ -58,7 +60,7 @@ modules:
               input: midi.e2
               shift: 0.4
 
-    - output: mm
+    - output: o
       path: personal/mix_mario.glsl
       inputs:
           a: vid1
@@ -69,19 +71,34 @@ modules:
       path: shaders/mix.glsl
       inputs:
           a: start
-          b: mm
+          b: o
           mix: midi.e1
 
     - output: n
       path: shaders/noise.glsl
       inputs:
-          amp: midi.f6
+          amp: midi.f5
+
+    - output: weird_trails
+      path: shaders/trail_weird.glsl
+      inputs:
+          img0: o
+          knob: midi.e3
+
+    - output: o
+      path: shaders/mix.glsl
+      inputs:
+          a: o
+          b: weird_trails
+          mix: midi.e3
 
     - output: o
       path: shaders/edges.glsl
       inputs:
           img0: o
-          mix: midi.f5
+          mix: midi.f4
           noise:
             input: n
             amp: 0.5
+
+
