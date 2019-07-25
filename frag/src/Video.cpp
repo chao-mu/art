@@ -3,6 +3,8 @@
 // STL
 #include <algorithm>
 
+// TODO: Clean this all up with inspiration from the actor model
+
 namespace frag {
     Video::Video(int device, double fps, cv::Size size) : device_(device), size_(size), fps_(fps), buffer_size_(1) {
     }
@@ -15,15 +17,17 @@ namespace frag {
     }
 
     void Video::update() {
-        if (fps_ != 0) {
-            std::chrono::high_resolution_clock::time_point now =
-                std::chrono::high_resolution_clock::now();
+        if (fps_ == 0) {
+            throw std::runtime_error("FIXME: Media.update needs to be lightweight if there is no work to do as it gets called before textures are bound");
+        }
 
-            std::chrono::duration<float> duration = now - last_frame_;
+        std::chrono::high_resolution_clock::time_point now =
+            std::chrono::high_resolution_clock::now();
 
-            if (duration.count() < 1 / fps_) {
-                return;
-            }
+        std::chrono::duration<float> duration = now - last_frame_;
+
+        if (duration.count() < 1 / fps_) {
+            return;
         }
 
         std::lock_guard guard(frame_mutex_);
@@ -91,19 +95,21 @@ namespace frag {
                 tmp_buf.push_back(frame);
             } else {
                 vid_->set(cv::CAP_PROP_POS_FRAMES, 0);
+                i--;
             }
+        }
+
+        if (rev) {
+            std::reverse(tmp_buf.begin(), tmp_buf.end());
         }
 
         {
             std::lock_guard guard(frame_mutex_);
 
             size_ = tmp_buf.front().size();
-            if (rev) {
-                std::reverse(tmp_buf.begin(), tmp_buf.end());
-            }
-
             buffer_.insert(buffer_.end(), tmp_buf.begin(), tmp_buf.end());
         }
+
         last_reverse_ = rev;
     }
 

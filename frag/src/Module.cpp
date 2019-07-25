@@ -353,6 +353,7 @@ namespace frag {
             } else if (addr_opt.has_value() && store->isMedia(addr_opt.value())) {
                 std::shared_ptr<Media> tex = store->getMedia(addr_opt.value());
                 program_->setUniform(uni_name, [&tex, &slot](GLint& id) {
+                    tex->update();
                     tex->bind(slot);
                     glUniform1i(id, slot);
                     slot++;

@@ -22,7 +22,6 @@
 #include "Video.h"
 #include "types.h"
 #include "midi/Device.h"
-
 #include "VertexBuffer.h"
 #include "VertexArray.h"
 #include "IndexBuffer.h"
@@ -32,10 +31,20 @@
 #include "PingPongTexture.h"
 #include "GLUtil.h"
 
-// Texture units
-#define LAST_OUTPUT_UNIT 1
-#define LAST_OUTPUT_UNIT_GL GL_TEXTURE1
-#define CAM_SLOT 2
+#define DEBUG_TIME_DECLARE(name) \
+     std::chrono::time_point<std::chrono::high_resolution_clock> start_ ## name; \
+     std::chrono::time_point<std::chrono::high_resolution_clock> end_ ## name;
+
+#define DEBUG_TIME_START(name) \
+    if (debug_time) { \
+        start_##name = std::chrono::high_resolution_clock::now(); \
+    }
+
+#define DEBUG_TIME_END(name) \
+    if (debug_time) { \
+        end_##name = std::chrono::high_resolution_clock::now(); \
+        std::cout << "debug-timer " # name << " " << std::chrono::duration<double, std::milli>(end_##name - start_##name).count() << "ms" << std::endl; \
+    }
 
 void screenshot(std::shared_ptr<frag::Texture> out, const std::string& path="") {
     std::string dest = path;
@@ -99,6 +108,8 @@ int main(int argc, const char** argv) {
         std::cerr << "error: " << e.error() << " for arg " << e.argId() << std::endl;
         return 1;
     }
+
+    bool debug_time = debug_timer_arg.getValue();
 
     sf::Music music;
     const std::string sound_path = sound_arg.getValue();
@@ -217,10 +228,18 @@ int main(int argc, const char** argv) {
 
     // Our run loop
     unsigned int iter = 0;
-    double last_time = glfwGetTime();
     bool first_pass = true;
+
+    DEBUG_TIME_DECLARE(render)
+    DEBUG_TIME_DECLARE(loop)
+    DEBUG_TIME_DECLARE(draw)
+
     while (!glfwWindowShouldClose(window)) {
+        DEBUG_TIME_START(loop)
+
         GLCall(glfwPollEvents());
+
+        DEBUG_TIME_START(render)
 
         // We will be treating this like an int when passing to shader
         iter = (iter + 1) % INT_MAX;
@@ -264,6 +283,9 @@ int main(int argc, const char** argv) {
                 frag::Value(std::vector({static_cast<float>(res.width), static_cast<float>(res.height)})));
         }
 
+        DEBUG_TIME_END(render)
+
+        DEBUG_TIME_START(draw)
 
         // Calculate blit settings
         int win_width, win_height;
@@ -289,23 +311,16 @@ int main(int argc, const char** argv) {
             GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT,
             GL_NEAREST
         );
+        DEBUG_TIME_END(draw)
 
         // Show buffer
         glfwSwapBuffers(window);
 
-        for (auto& kv : media) {
-            kv.second->update();
-        }
-
         std::this_thread::sleep_for(std::chrono::milliseconds(pause_arg.getValue()));
 
-        if (debug_timer_arg.getValue()) {
-            double current_time = glfwGetTime();
-            std::cout << "Elapsed: " << current_time - last_time << std::endl;
-            last_time = glfwGetTime();
-        }
-
         first_pass = false;
+
+        DEBUG_TIME_END(loop)
     }
 
     return 0;
