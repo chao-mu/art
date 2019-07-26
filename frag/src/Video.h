@@ -31,6 +31,8 @@ namespace frag {
 
             void setReverse(bool t);
 
+            void flipPlayback();
+
         private:
             void nextChunk();
 

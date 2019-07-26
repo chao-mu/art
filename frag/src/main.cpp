@@ -75,12 +75,17 @@ void onWindowSize(GLFWwindow* /* window */, int width, int height) {
 std::shared_ptr<frag::Texture> tex_out;
 std::string out_path;
 
+bool flip_playback = false;
+
 // GLFW key press callback
 void onKey(GLFWwindow* window, int key, int /*scancode*/, int action, int /*mods*/) {
     if (action == GLFW_RELEASE) {
         switch (key) {
             case GLFW_KEY_Q:
                 GLCall(glfwSetWindowShouldClose(window, GLFW_TRUE));
+                break;
+            case GLFW_KEY_R:
+                flip_playback = true;
                 break;
             case GLFW_KEY_P:
                 screenshot(tex_out, out_path);
@@ -237,6 +242,12 @@ int main(int argc, const char** argv) {
     while (!glfwWindowShouldClose(window)) {
         DEBUG_TIME_START(loop)
 
+        if (flip_playback) {
+            for (auto& kv : media) {
+                kv.second->flipPlayback();
+            }
+            flip_playback = false;
+        }
         GLCall(glfwPollEvents());
 
         DEBUG_TIME_START(render)

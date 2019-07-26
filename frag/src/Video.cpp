@@ -60,11 +60,12 @@ namespace frag {
 
         bool rev = reverse_.load();
 
-        if (rev) {
+        // If in reverse or changing direction.
+        if (rev || last_reverse_.load() != rev) {
             int pos = static_cast<int>(vid_->get(cv::CAP_PROP_POS_FRAMES));
 
             // If we were previously reversed account for that rewind...
-            if (last_reverse_.load()) {
+            if (last_reverse_.load() && rev) {
                 pos -= reverse_chunk_size_;
             }
 
@@ -99,15 +100,16 @@ namespace frag {
             }
         }
 
-        if (rev) {
-            std::reverse(tmp_buf.begin(), tmp_buf.end());
-        }
-
         {
             std::lock_guard guard(frame_mutex_);
 
             size_ = tmp_buf.front().size();
-            buffer_.insert(buffer_.end(), tmp_buf.begin(), tmp_buf.end());
+            if (rev) {
+                std::reverse(tmp_buf.begin(), tmp_buf.end());
+                buffer_.insert(buffer_.begin(), tmp_buf.begin(), tmp_buf.end());
+            } else {
+                buffer_.insert(buffer_.end(), tmp_buf.begin(), tmp_buf.end());
+            }
         }
 
         last_reverse_ = rev;
@@ -120,7 +122,6 @@ namespace frag {
             std::reverse(buffer_.begin(), buffer_.end());
         }
 
-        last_reverse_ = reverse_.load();
         reverse_ = t;
     }
 
@@ -145,7 +146,6 @@ namespace frag {
         }
 
         if (size_.width != 0) {
-            std::cout << size_.width << std::endl;
             if (!vid_->set(cv::CAP_PROP_FRAME_WIDTH, size_.width)) {
                 throw std::runtime_error("Unable to set frame width");
             }
@@ -188,6 +188,10 @@ namespace frag {
     int Video::getHeight() {
         std::lock_guard guard(frame_mutex_);
         return size_.height;
+    }
+
+    void Video::flipPlayback() {
+        setReverse(!reverse_);
     }
 
     void Video::stop() {

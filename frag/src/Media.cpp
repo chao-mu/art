@@ -9,4 +9,7 @@ namespace frag {
 
     void Media::pause() {
     }
+
+    void Media::flipPlayback() {
+    }
 }
