@@ -34,16 +34,34 @@
 namespace frag {
     PatchParser::PatchParser(const std::string& path) : path_(path), store_(std::make_shared<ValueStore>()) {}
 
+    void PatchParser::parse() {
+        parseMedia();
+        parseControllers();
+        parseModules();
+    }
+
     std::shared_ptr<ValueStore> PatchParser::getValueStore() {
         return store_;
     }
 
+    std::map<std::string, std::shared_ptr<Video>> PatchParser::getVideos() {
+        return videos_;
+    }
+
+    std::map<std::string, std::shared_ptr<Texture>> PatchParser::getImages() {
+        return images_;
+    }
+
     std::map<std::string, std::shared_ptr<midi::Device>> PatchParser::getControllers() {
+        return controllers_;
+    }
+
+    void PatchParser::parseControllers() {
         const YAML::Node patch = YAML::LoadFile(path_);
         std::map<std::string, std::shared_ptr<midi::Device>> controllers;
 
         if (!patch[KEY_CONTROLLERS]) {
-            return controllers;
+            return;
         }
 
         for (const auto& kv : patch[KEY_CONTROLLERS]) {
@@ -56,21 +74,18 @@ namespace frag {
 
             const std::string type = settings[KEY_TYPE].as<std::string>();
             if (type == CONTROLLER_TYPE_MIDI) {
-                controllers[name] = loadMidiDevice(name, settings);
+                controllers_[name] = loadMidiDevice(name, settings);
             } else {
                 throw std::runtime_error("unsupported controller type " + type);
             }
         }
-
-        return controllers;
     }
 
-    std::map<std::string, std::shared_ptr<Media>> PatchParser::getMedia() {
+    void PatchParser::parseMedia() {
         const YAML::Node patch = YAML::LoadFile(path_);
-        std::map<std::string, std::shared_ptr<Media>> media;
 
         if (!patch[KEY_MEDIAS]) {
-            return media;
+            return;
         }
 
         for (const auto& kv : patch[KEY_MEDIAS]) {
@@ -85,15 +100,13 @@ namespace frag {
 
             const std::string type = settings[KEY_TYPE].as<std::string>();
             if (type == MEDIA_TYPE_IMAGE) {
-                media[name] = loadImage(name, settings);
+                images_[name] = loadImage(name, settings);
             } else if (type == MEDIA_TYPE_VIDEO) {
-                media[name] = loadVideo(name, settings);
+                videos_[name] = loadVideo(name, settings);
             } else {
                 throw std::runtime_error("unsupported media type " + type);
             }
         }
-
-        return media;
     }
 
     std::variant<std::monostate, Address, Value> readAddressOrValue(const YAML::Node& node) {
@@ -135,11 +148,14 @@ namespace frag {
     }
 
     std::vector<std::shared_ptr<Module>> PatchParser::getModules() {
+        return modules_;
+    }
+
+    void PatchParser::parseModules() {
         const YAML::Node patch = YAML::LoadFile(path_);
-        std::vector<std::shared_ptr<Module>> modules;
 
         if (!patch[KEY_MODULES]) {
-            return modules;
+            return;
         }
 
         Resolution res = getResolution();
@@ -191,13 +207,9 @@ namespace frag {
             }
 
             for (int i = 0; i < repeat; i++) {
-                modules.push_back(mod);
+                modules_.push_back(mod);
             }
-
-
         }
-
-        return modules;
     }
 
     Resolution PatchParser::getResolution() const {
@@ -235,7 +247,7 @@ namespace frag {
         return dev;
     }
 
-    std::shared_ptr<Media> PatchParser::loadVideo(const std::string& name, const YAML::Node& settings) const {
+    std::shared_ptr<Video> PatchParser::loadVideo(const std::string& name, const YAML::Node& settings) const {
         if (!settings[KEY_PATH]) {
             throw std::runtime_error("media '" + name + "' is missing path");
         }
@@ -260,12 +272,11 @@ namespace frag {
         }
 
         vid->start();
-        vid->update();
 
         return vid;
     }
 
-    std::shared_ptr<Media> PatchParser::loadImage(const std::string& name, const YAML::Node& settings) const {
+    std::shared_ptr<Texture> PatchParser::loadImage(const std::string& name, const YAML::Node& settings) const {
         if (!settings[KEY_PATH]) {
             throw std::runtime_error("source '" + name + "' is missing path");
         }

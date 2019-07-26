@@ -22,11 +22,19 @@ namespace frag {
         return name_;
     }
 
-    Address Address::withSubField(const std::string& sub) {
+    Address Address::withSubField(const std::string& sub) const {
         return Address(getName(), getField(), sub);
     }
+
+    Address Address::operator+(const std::string& str) const {
+        if (field_ == "") {
+            return Address(name_, str);
+        } else {
+            return withSubField(str);
+        }
+    }
     // This can often be seen written as
-    bool Address::operator <(const Address& b) const {
+    bool Address::operator<(const Address& b) const {
         // HACK, if addresses have !!! in them we're messed up
         return (name_ + "!!!" + field_ + "!!!" + sub_field_) <
             (b.name_ + "!!!" + b.field_ + "!!!" + b.sub_field_);

@@ -2,103 +2,28 @@ resolution:
     width: 1920
     height: 1080
 
-controllers:
-    midi:
-        type: midi
-        path: midi/icon_icontrols.yml
-
 media:
-    mario_start:
+    galaxy:
         type: image
-        path: ../content/mario-start.png
-
-    vid0:
-        type: video
-        path: /home/hackpoetic/tm/mario-1-1-rescale.avi
-
+        path: ../content/potw1927a.png
     vid1:
         type: video
-        path: /home/hackpoetic/tm/mario-1-2-rescale.mkv
+        path: /home/hackpoetic/vj/assets/1970/4096_Misc_TV_Commercials_Epic_Coffee/turn_and_drink.mkv
+
+#commands:
+#     - trigger: midi.f1
+#       command: flip-playback
+#       targets: [vid1]
 
 # Last output gets rendered
 modules:
-    - output: vid0
-      path: personal/center.glsl
-      inputs:
-          img0: vid0
-
     - output: vid1
       path: personal/center.glsl
       inputs:
           img0: vid1
-
-    - output: start
-      path: personal/trail_drop.glsl
-      inputs:
-          a: mario_start
-          b: start
-          x:
-            input: midi.f1
-            amp: -0.001
-            shift: -0.0009
-          y:
-            input: midi.f2
-            amp: 0.001
-            shift: 0.0009
-
-    - output: vid1
-      path: personal/knoty.glsl
-      inputs:
-          img0: vid1
-          amount: midi.f3
-
-    - output: vid0
-      path: shaders/transform.glsl
-      inputs:
-          img0: vid0
-          scale:
-              input: midi.e2
-              shift: 0.4
 
     - output: o
-      path: personal/mix_mario.glsl
+      path: shaders/blend_diff.glsl
       inputs:
           a: vid1
-          b: vid0
-          swap: midi.e2
-
-    - output: o
-      path: shaders/mix.glsl
-      inputs:
-          a: start
-          b: o
-          mix: midi.e1
-
-    - output: n
-      path: shaders/noise.glsl
-      inputs:
-          amp: midi.f5
-
-    - output: weird_trails
-      path: shaders/trail_weird.glsl
-      inputs:
-          img0: o
-          knob: midi.e3
-
-    - output: o
-      path: shaders/mix.glsl
-      inputs:
-          a: o
-          b: weird_trails
-          mix: midi.e3
-
-    - output: o
-      path: shaders/edges.glsl
-      inputs:
-          img0: o
-          mix: midi.f4
-          noise:
-            input: n
-            amp: 0.5
-
-
+          b: galaxy

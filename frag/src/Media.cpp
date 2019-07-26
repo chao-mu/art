@@ -3,13 +3,4 @@
 namespace frag {
     void Media::update() {
     }
-
-    void Media::play() {
-    }
-
-    void Media::pause() {
-    }
-
-    void Media::flipPlayback() {
-    }
 }

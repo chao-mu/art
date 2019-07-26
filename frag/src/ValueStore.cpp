@@ -38,6 +38,8 @@ namespace frag {
     void ValueStore::set(Address addr, std::shared_ptr<Media> m) {
         setIsMedia(addr, true);
         media_[addr.getName()] = m;
+        Resolution res = m->getResolution();
+        set(addr + "resolution", frag::Value(std::vector({static_cast<float>(res.width), static_cast<float>(res.height)})));
     }
 
     void ValueStore::set(Address addr, midi::Control c) {

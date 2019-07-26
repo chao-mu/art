@@ -26,7 +26,6 @@
 #include "VertexArray.h"
 #include "IndexBuffer.h"
 #include "Texture.h"
-#include "Media.h"
 #include "PatchParser.h"
 #include "PingPongTexture.h"
 #include "GLUtil.h"
@@ -203,29 +202,28 @@ int main(int argc, const char** argv) {
     GLCall(glEnableVertexAttribArray(0));
     GLCall(glBindBuffer(GL_ARRAY_BUFFER, 0));
 
+    // Load all the goodies
+    parser.parse();
+
     std::vector<std::shared_ptr<frag::Module>> modules = parser.getModules();
     if (modules.empty()) {
         std::cerr << "No modules specified. Nothing to do." << std::endl;
         return 1;
     }
 
-    std::map<std::string, std::shared_ptr<frag::Media>> media = parser.getMedia();
+    std::map<std::string, std::shared_ptr<frag::Video>> videos = parser.getVideos();
+    std::map<std::string, std::shared_ptr<frag::Texture>> images = parser.getImages();
     std::map<std::string, std::shared_ptr<frag::midi::Device>> controllers = parser.getControllers();
     std::shared_ptr<frag::ValueStore> store = parser.getValueStore();
 
-    std::map<std::string, std::shared_ptr<frag::Media>> modules_output;
+    std::map<std::string, std::shared_ptr<frag::Texture>> modules_output;
 
     // Initialize values
     for (const auto& mod : modules) {
         mod->compile(store);
         const std::string out_name = mod->getOutput();
         store->set(frag::Address(out_name), mod->getLastOutTex());
-
-        const frag::Resolution res = mod->getResolution();
-        store->set(frag::Address(out_name, "resolution"),
-                frag::Value(std::vector({static_cast<float>(res.width), static_cast<float>(res.height)})));
     }
-
 
     if (!sound_path.empty()) {
         music.play();
@@ -243,7 +241,7 @@ int main(int argc, const char** argv) {
         DEBUG_TIME_START(loop)
 
         if (flip_playback) {
-            for (auto& kv : media) {
+            for (auto& kv : videos) {
                 kv.second->flipPlayback();
             }
             flip_playback = false;
@@ -263,17 +261,13 @@ int main(int argc, const char** argv) {
             }
         }
 
-        for (const auto& kv : media) {
-            const std::string name = kv.first;
-            std::shared_ptr<frag::Media> m = kv.second;
-            store->set(frag::Address(name), m);
-
-            const frag::Resolution res = m->getResolution();
-
-            store->set(frag::Address(name, "resolution"),
-                    frag::Value(std::vector({static_cast<float>(res.width), static_cast<float>(res.height)})));
+        for (const auto& kv : videos) {
+            store->set(frag::Address(kv.first), kv.second);
         }
 
+        for (const auto& kv : images) {
+            store->set(frag::Address(kv.first), kv.second);
+        }
 
         for (size_t i=0; i < modules.size(); i++) {
             auto& mod = modules.at(i);

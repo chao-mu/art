@@ -2,7 +2,7 @@
 
 set -e
 
-FPS=60
+FPS=30
 
 if [ "$#" -ne 2 ]; then
     echo "Usage: `basename $0` in.trace out.mp4"

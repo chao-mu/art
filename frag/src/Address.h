@@ -15,9 +15,10 @@ namespace frag {
             std::string getSubField() const;
             std::string getName() const;
 
-            Address withSubField(const std::string& sub);
+            Address withSubField(const std::string& sub) const;
 
             bool operator <(const Address& b) const;
+            Address operator +(const std::string& str) const;
         private:
             std::string name_;
             std::string field_;
