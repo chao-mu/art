@@ -20,7 +20,7 @@
 #include "ShaderProgram.h"
 #include "MathUtil.h"
 #include "Video.h"
-#include "types.h"
+#include "Resolution.h"
 #include "midi/Device.h"
 #include "VertexBuffer.h"
 #include "VertexArray.h"
@@ -290,8 +290,6 @@ int main(int argc, const char** argv) {
 
         DEBUG_TIME_END(render)
 
-        DEBUG_TIME_START(draw)
-
         // Calculate blit settings
         int win_width, win_height;
         glfwGetWindowSize(window, &win_width, &win_height);
@@ -306,6 +304,7 @@ int main(int argc, const char** argv) {
         tex_out = mod->getLastOutTex();
 
         // Draw to the screen
+        DEBUG_TIME_START(draw)
         glDrawBuffer(GL_BACK);
         glBindFramebuffer(GL_READ_FRAMEBUFFER, mod->getFBO());
         glReadBuffer(mod->getReadableBuf());

@@ -284,7 +284,7 @@ namespace frag {
                 continue;
             }
 
-            std::variant<std::monostate, Address, Value>& addr_or_val = uniforms_.at(uni_name);
+            AddressOrValue& addr_or_val = uniforms_.at(uni_name);
 
             std::optional<Value> val_opt;
             std::optional<Address> addr_opt;

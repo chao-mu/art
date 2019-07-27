@@ -3,13 +3,12 @@
 
 // STL
 #include <string>
-#include <variant>
 
 // Ours
 #include "GLUtil.h"
 #include "ShaderProgram.h"
 #include "PingPongTexture.h"
-#include "types.h"
+#include "AddressOrValue.h"
 #include "Address.h"
 #include "Value.h"
 #include "ValueStore.h"
@@ -19,9 +18,9 @@ namespace frag {
         public:
             struct Param {
                 public:
-                    std::variant<std::monostate, Address, Value> value;
-                    std::variant<std::monostate, Address, Value> amp;
-                    std::variant<std::monostate, Address, Value> shift;
+                    AddressOrValue value;
+                    AddressOrValue amp;
+                    AddressOrValue shift;
             };
 
             Module(const std::string& output, const std::string& path, const Resolution& res);
@@ -46,7 +45,7 @@ namespace frag {
             const std::string output_;
             const std::string path_;
             std::map<std::string, Param> params_;
-            std::map<std::string, std::variant<std::monostate, Address, Value>> uniforms_;
+            std::map<std::string, AddressOrValue> uniforms_;
             std::shared_ptr<PingPongTexture> ping_pong_;
             GLuint fbo_;
             const Resolution resolution_;

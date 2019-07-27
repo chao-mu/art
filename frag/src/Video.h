@@ -12,7 +12,6 @@
 #include <opencv2/opencv.hpp>
 
 // Ours
-#include "types.h"
 #include "Texture.h"
 
 namespace frag {

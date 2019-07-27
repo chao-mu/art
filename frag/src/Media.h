@@ -5,7 +5,7 @@
 #include <string>
 
 // Ours
-#include "types.h"
+#include "Resolution.h"
 
 namespace frag {
     class Media {

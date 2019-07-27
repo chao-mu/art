@@ -10,7 +10,7 @@
 // Ours
 #include "GLUtil.h"
 #include "Media.h"
-#include "types.h"
+#include "Resolution.h"
 
 namespace frag {
     class Texture : public Media {

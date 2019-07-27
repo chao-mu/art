@@ -109,7 +109,7 @@ namespace frag {
         }
     }
 
-    std::variant<std::monostate, Address, Value> readAddressOrValue(const YAML::Node& node) {
+    AddressOrValue readAddressOrValue(const YAML::Node& node) {
         if (node.IsSequence()) {
             std::vector<float> v = {};
 

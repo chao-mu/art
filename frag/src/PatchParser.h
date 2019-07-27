@@ -14,7 +14,8 @@
 #include "Video.h"
 #include "Texture.h"
 #include "Module.h"
-#include "types.h"
+#include "Resolution.h"
+#include "AddressOrValue.h"
 #include "midi/Device.h"
 
 namespace frag {
