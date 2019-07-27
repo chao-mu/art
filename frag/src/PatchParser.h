@@ -29,14 +29,18 @@ namespace frag {
             std::map<std::string, std::shared_ptr<Texture>> getImages();
             std::vector<std::shared_ptr<Module>> getModules();
             std::map<std::string, std::shared_ptr<midi::Device>> getControllers();
+            std::map<std::string, std::shared_ptr<Group>> getGroups();
             std::shared_ptr<ValueStore> getValueStore();
 
             Resolution getResolution() const;
 
         private:
+            static AddressOrValue readAddressOrValue(const YAML::Node& node);
+
             void parseMedia();
             void parseControllers();
             void parseModules();
+            void parseGroups();
 
             std::shared_ptr<Texture> loadImage(const std::string& name, const YAML::Node& settings) const;
             std::shared_ptr<Video> loadVideo(const std::string& name, const YAML::Node& settings) const;
@@ -48,6 +52,7 @@ namespace frag {
             std::map<std::string, std::shared_ptr<Texture>> images_;
             std::map<std::string, std::shared_ptr<midi::Device>> controllers_;
             std::vector<std::shared_ptr<Module>> modules_;
+            std::map<std::string, std::shared_ptr<Group>> groups_;
     };
 }
 

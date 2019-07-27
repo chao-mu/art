@@ -7,28 +7,32 @@
 #include <memory>
 
 // Ours
-#include "Address.h"
-#include "Value.h"
+#include "AddressOrValue.h"
+#include "Group.h"
 #include "Media.h"
 #include "midi/Control.h"
 
 namespace frag {
     class ValueStore {
         public:
-            bool isMedia(const Address& addr) const;
-            void setIsMedia(const Address& addr, bool is_media);
+            bool isMedia(Address addr) const;
+            void setIsMedia(Address addr, bool is_media);
 
-            std::optional<Value> getValue(const Address& addr) const;
-            std::shared_ptr<Media> getMedia(const Address& addr) const;
+            std::optional<Value> getValue(Address addr) const;
+            std::shared_ptr<Media> getMedia(Address addr) const;
 
             void set(Address addr, Value v);
             void set(Address addr, std::shared_ptr<Media> m);
             void set(Address addr, midi::Control c);
+            void set(Address addr, std::shared_ptr<Group> g);
+
+            Address getAddress(Address addr) const;
 
         private:
             std::map<Address, Value> values_;
-            std::map<std::string, std::shared_ptr<Media>> media_;
-            std::map<std::string, bool> is_media_;
+            std::map<Address, std::shared_ptr<Media>> media_;
+            std::map<Address, bool> is_media_;
+            std::map<Address, AddressOrValue> aovs_;
     };
 }
 

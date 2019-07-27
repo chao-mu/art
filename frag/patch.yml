@@ -6,24 +6,26 @@ media:
     galaxy:
         type: image
         path: ../content/potw1927a.png
+
     vid1:
         type: video
         path: /home/hackpoetic/vj/assets/1970/4096_Misc_TV_Commercials_Epic_Coffee/turn_and_drink.mkv
 
-#commands:
-#     - trigger: midi.f1
-#       command: flip-playback
-#       targets: [vid1]
+    vid2:
+        type: video
+        path: /home/hackpoetic/vj/assets/1970/0649_Early_1970s_Television_Commercials_20_07_34_00_3mb/disney_family_walking.mkv
 
-# Last output gets rendered
+groups:
+    vids: [vid1, vid2]
+
 modules:
     - output: vid1
       path: personal/center.glsl
       inputs:
-          img0: vid1
-
-    - output: o
-      path: shaders/blend_diff.glsl
-      inputs:
-          a: vid1
-          b: galaxy
+          img0: vids.first
+#
+#    - output: o
+#      path: shaders/blend_diff.glsl
+#      inputs:
+#          a: vids.first
+#          b: galaxy

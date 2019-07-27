@@ -12,6 +12,7 @@
 #include "Video.h"
 
 #define KEY_MEDIAS "media"
+#define KEY_GROUPS "groups"
 #define KEY_MODULES "modules"
 #define KEY_PLAYBACK "playback"
 #define KEY_TYPE "type"
@@ -38,6 +39,7 @@ namespace frag {
         parseMedia();
         parseControllers();
         parseModules();
+        parseGroups();
     }
 
     std::shared_ptr<ValueStore> PatchParser::getValueStore() {
@@ -56,9 +58,32 @@ namespace frag {
         return controllers_;
     }
 
+    std::map<std::string, std::shared_ptr<Group>> PatchParser::getGroups() {
+        return groups_;
+    }
+
+    void PatchParser::parseGroups() {
+        const YAML::Node patch = YAML::LoadFile(path_);
+
+        if (!patch[KEY_GROUPS]) {
+            return;
+        }
+
+        for (const auto& kv : patch[KEY_GROUPS]) {
+            const std::string& name = kv.first.as<std::string>();
+            auto group = std::make_shared<Group>();
+
+            for (const auto el : kv.second) {
+                group->add(readAddressOrValue(el));
+            }
+
+            groups_[kv.first.as<std::string>()] = group;
+            store_->set(Address(name), group);
+        }
+    }
+
     void PatchParser::parseControllers() {
         const YAML::Node patch = YAML::LoadFile(path_);
-        std::map<std::string, std::shared_ptr<midi::Device>> controllers;
 
         if (!patch[KEY_CONTROLLERS]) {
             return;
@@ -109,7 +134,7 @@ namespace frag {
         }
     }
 
-    AddressOrValue readAddressOrValue(const YAML::Node& node) {
+    AddressOrValue PatchParser::readAddressOrValue(const YAML::Node& node) {
         if (node.IsSequence()) {
             std::vector<float> v = {};
 
@@ -132,19 +157,26 @@ namespace frag {
             return Value(f);
         }
 
-        std::istringstream iss(str);
         std::vector<std::string> tokens;
-        tokens.resize(3);
         std::string token;
-        for (int i = 0; i < 4; i++) {
-            if (std::getline(iss, token, '.')) {
-                tokens[i] = token;
-            } else {
-                break;
+        std::istringstream iss(str);
+        while (std::getline(iss, token, '.')) {
+            tokens.push_back(token);
+        }
+
+        std::string swiz;
+        if (tokens.size() > 1) {
+            std::regex nonswiz_re("[^xyzwrgb]");
+
+            if (!regex_search(tokens.back(), nonswiz_re)) {
+                swiz = tokens.back();
             }
         }
 
-        return Address(tokens[0], tokens[1], tokens[2]);
+        Address addr(tokens);
+        addr.setSwiz(swiz);
+
+        return addr;
     }
 
     std::vector<std::shared_ptr<Module>> PatchParser::getModules() {

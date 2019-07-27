@@ -1,42 +1,53 @@
 #include "Address.h"
 
-
 namespace frag {
-    Address::Address(const std::string& name) : Address(name, "") {}
+    Address::Address(std::vector<std::string> fields) : fields_(fields) {}
 
-    Address::Address(const std::string& name, const std::string& field) : Address(name, field, "") {}
+    std::string Address::toString() const {
+        std::string str;
 
-    Address::Address(const std::string& name, const std::string& field, const std::string& sub_field) :
-        name_(name), field_(field), sub_field_(sub_field) {}
+        std::string sep = "";
+        for (const auto& field : fields_) {
+            // TODO: Remove PatchParser call to our constructor with empty values. Boo
+            if (field.empty()) {
+                continue;
+            }
 
+            str += sep;
+            str += field;
+            sep = ".";
+        }
 
-    std::string Address::getField() const {
-        return field_;
+        return str;
     }
 
-    std::string Address::getSubField() const {
-        return sub_field_;
+    std::string Address::getSwiz() {
+        return swiz_;
     }
 
-    std::string Address::getName() const {
-        return name_;
+    void Address::setSwiz(const std::string& str) {
+        swiz_ = str;
     }
 
-    Address Address::withSubField(const std::string& sub) const {
-        return Address(getName(), getField(), sub);
+    std::string Address::getHead() {
+        return fields_.front();
+    }
+
+    std::vector<std::string> Address::getFields() const {
+        return fields_;
+    }
+
+    Address Address::withoutTail() const {
+        return Address(std::vector(fields_.cbegin(), fields_.cend() - 1));
     }
 
     Address Address::operator+(const std::string& str) const {
-        if (field_ == "") {
-            return Address(name_, str);
-        } else {
-            return withSubField(str);
-        }
+        std::vector<std::string> copy = fields_;
+        copy.push_back(str);
+        return Address(copy);
     }
     // This can often be seen written as
     bool Address::operator<(const Address& b) const {
-        // HACK, if addresses have !!! in them we're messed up
-        return (name_ + "!!!" + field_ + "!!!" + sub_field_) <
-            (b.name_ + "!!!" + b.field_ + "!!!" + b.sub_field_);
+        return toString() < b.toString();
     }
 }

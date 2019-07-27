@@ -182,7 +182,7 @@ namespace frag {
 
                     bool defined = params_.count(name) > 0;
                     std::optional<Address> addr_opt;
-                    if (defined && std::holds_alternative<Address>(params_.at(name).value)) {
+                    if (defined && isAddress(params_.at(name).value)) {
                         addr_opt = std::get<Address>(params_.at(name).value);
                     }
 
@@ -208,7 +208,7 @@ namespace frag {
                     frag_shader << "#define " << name << "_tc ";
                     if (is_texture && addr_opt.has_value()) {
                         frag_shader << "(gl_FragCoord.xy / " << internal_name_res << ")";
-                        uniforms_[internal_name_res] = Address(addr_opt.value().getName(), "resolution");
+                        uniforms_[internal_name_res] = addr_opt.value() + "resolution";
                     } else {
                         frag_shader << "vec2(0)";
                     }
@@ -219,7 +219,7 @@ namespace frag {
                     frag_shader << type << " channel_" << name << "(in vec2 uv) {\n";
                     if (is_texture && addr_opt.has_value()) {
                         frag_shader << "   return " << "texture(" << internal_name << ", uv)";
-                        std::string swiz = addr_opt.value().getField();
+                        std::string swiz = addr_opt.value().getSwiz();
 
                         // Expand the swizzle
                         if (swiz.empty()) {
@@ -288,18 +288,12 @@ namespace frag {
 
             std::optional<Value> val_opt;
             std::optional<Address> addr_opt;
-            if (std::holds_alternative<Value>(addr_or_val)) {
+            if (isValue(addr_or_val)) {
                 val_opt = std::get<Value>(addr_or_val);
-            } else if (std::holds_alternative<Address>(addr_or_val)) {
+            } else if (isAddress(addr_or_val)) {
                 addr_opt = std::get<Address>(addr_or_val);
                 val_opt = store->getValue(addr_opt.value());
             }
-
-            /*
-            if (val_opt.has_value() && addr_opt.has_value() && addr_opt.value().getName() == "midi") {
-                std::cout << val_opt.value().getFloat() << std::endl;
-            }
-            */
 
             if (val_opt.has_value()) {
                 Value val = val_opt.value();
