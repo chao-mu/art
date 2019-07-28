@@ -17,6 +17,7 @@
 
 // Ours
 #include "GLUtil.h"
+#include "cmd/Command.h"
 #include "ShaderProgram.h"
 #include "MathUtil.h"
 #include "Video.h"
@@ -215,6 +216,7 @@ int main(int argc, const char** argv) {
     std::map<std::string, std::shared_ptr<frag::Texture>> images = parser.getImages();
     std::map<std::string, std::shared_ptr<frag::midi::Device>> controllers = parser.getControllers();
     std::shared_ptr<frag::ValueStore> store = parser.getValueStore();
+    std::vector<std::shared_ptr<frag::cmd::Command>> commands = parser.getCommands();
 
     std::map<std::string, std::shared_ptr<frag::Texture>> modules_output;
 
@@ -236,6 +238,7 @@ int main(int argc, const char** argv) {
     DEBUG_TIME_DECLARE(render)
     DEBUG_TIME_DECLARE(loop)
     DEBUG_TIME_DECLARE(draw)
+    DEBUG_TIME_DECLARE(setControllers)
 
     while (!glfwWindowShouldClose(window)) {
         DEBUG_TIME_START(loop)
@@ -254,12 +257,14 @@ int main(int argc, const char** argv) {
         iter = (iter + 1) % INT_MAX;
         store->set(frag::Address("iteration"), frag::Value(static_cast<float>(iter)));
 
+        DEBUG_TIME_START(setControllers)
         for (const auto& kv : controllers) {
             const std::string& controller_name = kv.first;
             for (const frag::midi::Control& ctrl : kv.second->getControls()) {
                 store->set(frag::Address(controller_name, ctrl.name), ctrl);
             }
         }
+        DEBUG_TIME_END(setControllers)
 
         for (const auto& kv : videos) {
             store->set(frag::Address(kv.first), kv.second);
@@ -267,6 +272,14 @@ int main(int argc, const char** argv) {
 
         for (const auto& kv : images) {
             store->set(frag::Address(kv.first), kv.second);
+        }
+
+
+        for (const auto& cmd : commands) {
+            std::optional<frag::Value> val_opt = store->getValue(cmd->getTrigger());
+            if (val_opt.has_value() && val_opt.value().getBool()) {
+                cmd->run(store);
+            }
         }
 
         for (size_t i=0; i < modules.size(); i++) {

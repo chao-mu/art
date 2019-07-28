@@ -10,7 +10,15 @@
 // Ours
 #include "Texture.h"
 #include "Video.h"
+#include "cmd/Overwrite.h"
+#include "cmd/Reverse.h"
 
+#define KEY_MEMBERS "members"
+#define KEY_ARGS "args"
+#define KEY_INDEX "index"
+#define KEY_COMMANDS "commands"
+#define KEY_COMMAND "command"
+#define KEY_TRIGGER "trigger"
 #define KEY_MEDIAS "media"
 #define KEY_GROUPS "groups"
 #define KEY_MODULES "modules"
@@ -36,10 +44,13 @@ namespace frag {
     PatchParser::PatchParser(const std::string& path) : path_(path), store_(std::make_shared<ValueStore>()) {}
 
     void PatchParser::parse() {
-        parseMedia();
-        parseControllers();
-        parseModules();
-        parseGroups();
+        const YAML::Node patch = YAML::LoadFile(path_);
+
+        parseMedia(patch);
+        parseControllers(patch);
+        parseModules(patch);
+        parseGroups(patch);
+        parseCommands(patch);
     }
 
     std::shared_ptr<ValueStore> PatchParser::getValueStore() {
@@ -62,19 +73,93 @@ namespace frag {
         return groups_;
     }
 
-    void PatchParser::parseGroups() {
-        const YAML::Node patch = YAML::LoadFile(path_);
+    std::vector<std::shared_ptr<cmd::Command>> PatchParser::getCommands() {
+        return commands_;
+    }
 
+    void PatchParser::parseCommands(const YAML::Node& patch) {
+        if (!patch[KEY_COMMANDS]) {
+            return;
+        }
+
+        int i = 0;
+        for (const auto& settings : patch[KEY_COMMANDS]) {
+            i++;
+            std::string command_name = requireNode(
+                settings,
+                KEY_COMMAND,
+                "expected command #" + std::to_string(i) + " to have key '" + KEY_COMMAND + "'"
+            ).as<std::string>();
+
+            Address trigger = requireAddress(
+                settings,
+                KEY_TRIGGER,
+                "expected command #" + std::to_string(i) + " to have key '" + KEY_TRIGGER + "'"
+            );
+
+            std::vector<AddressOrValue> args;
+            if (settings[KEY_ARGS]) {
+                for (const auto& arg : settings[KEY_ARGS]) {
+                    args.push_back(readAddressOrValue(arg));
+                }
+            }
+
+            std::shared_ptr<cmd::Command> command;
+            if (command_name == "reverse") {
+                command = std::make_shared<cmd::Reverse>(command_name, trigger, args);
+            } else if (command_name == "overwrite") {
+                command = std::make_shared<cmd::Overwrite>(command_name, trigger, args);
+            } else {
+                throw std::runtime_error(
+                        "command #" + std::to_string(i) + " has unrecognized command name '" +
+                        command_name + "'");
+            }
+
+
+            command->validate();
+
+            commands_.push_back(command);
+        }
+    }
+
+    void PatchParser::parseGroups(const YAML::Node& patch) {
         if (!patch[KEY_GROUPS]) {
             return;
         }
 
         for (const auto& kv : patch[KEY_GROUPS]) {
             const std::string& name = kv.first.as<std::string>();
+            const YAML::Node& settings = kv.second;
+
             auto group = std::make_shared<Group>();
 
-            for (const auto el : kv.second) {
-                group->add(readAddressOrValue(el));
+            if (kv.second.IsSequence()) {
+                for (const auto el : settings) {
+                    group->add(readAddressOrValue(el));
+                }
+            } else {
+                const YAML::Node elements = requireNode(
+                    settings,
+                    KEY_MEMBERS,
+                    "expected group '" + name + "' to have field '" + KEY_MEMBERS + "'"
+                );
+
+                int el_size = 0;
+                for (const auto el : elements) {
+                    group->add(readAddressOrValue(el));
+                    el_size++;
+                }
+
+                if (settings[KEY_INDEX]) {
+                    int i = 0;
+                    for (const auto idx_name : settings[KEY_INDEX]) {
+                        if (i > el_size - 1) {
+                            throw std::runtime_error("Index specification for group '" + name + "' is longer than members");
+                        }
+                        group->setMapping(idx_name.as<std::string>(), i);
+                        i++;
+                    }
+                }
             }
 
             groups_[kv.first.as<std::string>()] = group;
@@ -82,9 +167,7 @@ namespace frag {
         }
     }
 
-    void PatchParser::parseControllers() {
-        const YAML::Node patch = YAML::LoadFile(path_);
-
+    void PatchParser::parseControllers(const YAML::Node& patch) {
         if (!patch[KEY_CONTROLLERS]) {
             return;
         }
@@ -106,9 +189,7 @@ namespace frag {
         }
     }
 
-    void PatchParser::parseMedia() {
-        const YAML::Node patch = YAML::LoadFile(path_);
-
+    void PatchParser::parseMedia(const YAML::Node& patch) {
         if (!patch[KEY_MEDIAS]) {
             return;
         }
@@ -134,58 +215,7 @@ namespace frag {
         }
     }
 
-    AddressOrValue PatchParser::readAddressOrValue(const YAML::Node& node) {
-        if (node.IsSequence()) {
-            std::vector<float> v = {};
-
-            for (const auto& el : node) {
-                v.push_back(el.as<float>());
-            }
-
-            return Value(v);
-        }
-
-        const std::string str = node.as<std::string>();
-
-        bool b;
-        float f;
-        if (YAML::convert<bool>::decode(node, b) && str != "n" && str != "y") {
-            return Value(b);
-        }
-
-        if (YAML::convert<float>::decode(node, f)) {
-            return Value(f);
-        }
-
-        std::vector<std::string> tokens;
-        std::string token;
-        std::istringstream iss(str);
-        while (std::getline(iss, token, '.')) {
-            tokens.push_back(token);
-        }
-
-        std::string swiz;
-        if (tokens.size() > 1) {
-            std::regex nonswiz_re("[^xyzwrgb]");
-
-            if (!regex_search(tokens.back(), nonswiz_re)) {
-                swiz = tokens.back();
-            }
-        }
-
-        Address addr(tokens);
-        addr.setSwiz(swiz);
-
-        return addr;
-    }
-
-    std::vector<std::shared_ptr<Module>> PatchParser::getModules() {
-        return modules_;
-    }
-
-    void PatchParser::parseModules() {
-        const YAML::Node patch = YAML::LoadFile(path_);
-
+    void PatchParser::parseModules(const YAML::Node& patch) {
         if (!patch[KEY_MODULES]) {
             return;
         }
@@ -242,6 +272,74 @@ namespace frag {
                 modules_.push_back(mod);
             }
         }
+    }
+
+    AddressOrValue PatchParser::readAddressOrValue(const YAML::Node& node) {
+        if (node.IsSequence()) {
+            std::vector<float> v = {};
+
+            for (const auto& el : node) {
+                v.push_back(el.as<float>());
+            }
+
+            return Value(v);
+        }
+
+        const std::string str = node.as<std::string>();
+
+        bool b;
+        float f;
+        if (YAML::convert<bool>::decode(node, b) && str != "n" && str != "y") {
+            return Value(b);
+        }
+
+        if (YAML::convert<float>::decode(node, f)) {
+            return Value(f);
+        }
+
+        return readAddress(node);
+    }
+
+    Address PatchParser::readAddress(const YAML::Node& node) {
+        std::string str = node.as<std::string>();
+        std::vector<std::string> tokens;
+        std::string token;
+        std::istringstream iss(str);
+        while (std::getline(iss, token, '.')) {
+            tokens.push_back(token);
+        }
+
+        std::string swiz;
+        if (tokens.size() > 1) {
+            std::regex nonswiz_re("[^xyzwrgb]");
+
+            if (!regex_search(tokens.back(), nonswiz_re)) {
+                swiz = tokens.back();
+            }
+        }
+
+        Address addr(tokens);
+        addr.setSwiz(swiz);
+
+        return addr;
+    }
+
+    const YAML::Node PatchParser::requireNode(const YAML::Node& parent, const std::string& key, const std::string& err) {
+        if (!parent[key]) {
+            throw std::runtime_error(err);
+        }
+
+        return parent[key];
+    }
+
+
+    Address PatchParser::requireAddress(const YAML::Node& parent, const std::string& key, const std::string& err) {
+        return readAddress(requireNode(parent, key, err));
+    }
+
+
+    std::vector<std::shared_ptr<Module>> PatchParser::getModules() {
+        return modules_;
     }
 
     Resolution PatchParser::getResolution() const {

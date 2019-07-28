@@ -8,15 +8,18 @@
 namespace frag {
     class Address {
         public:
-            Address(std::vector<std::string> fields);
+            Address(const std::vector<std::string>& fields);
+            Address(const std::vector<std::string>& fields, const std::string& tail);
             template<class ...Ts> Address(Ts... fields) : fields_{fields...} {}
+            //template<class ...Ts> Address(Ts... fields, const std::string& last) : fields_{fields..., last} {}
+
+            Address withoutTail() const;
 
             std::string getHead();
+            std::string getTail();
 
             void setSwiz(const std::string& str);
             std::string getSwiz();
-
-            Address withoutTail() const;
 
             bool operator <(const Address& b) const;
             Address operator +(const std::string& str) const;

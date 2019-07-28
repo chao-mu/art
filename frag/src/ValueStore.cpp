@@ -12,7 +12,7 @@ namespace frag {
     }
 
     Address ValueStore::getAddress(Address addr) const {
-        if (values_.count(addr) > 0 || is_media_.count(addr) > 0) {
+        if (values_.count(addr) > 0 || is_media_.count(addr) > 0 || groups_.count(addr) > 0) {
             return addr;
         }
 
@@ -56,6 +56,26 @@ namespace frag {
         return {};
     }
 
+    std::shared_ptr<Video> ValueStore::getVideo(Address addr) const {
+        addr = getAddress(addr);
+
+        if (videos_.count(addr)) {
+            return videos_.at(addr);
+        } else {
+            return nullptr;
+        }
+    }
+
+    std::shared_ptr<Group> ValueStore::getGroup(Address addr) const {
+        addr = getAddress(addr);
+
+        if (groups_.count(addr)) {
+            return groups_.at(addr);
+        } else {
+            return nullptr;
+        }
+    }
+
     std::shared_ptr<Media> ValueStore::getMedia(Address addr) const {
         addr = getAddress(addr);
 
@@ -67,14 +87,27 @@ namespace frag {
     }
 
     void ValueStore::set(Address addr, std::shared_ptr<Group> g) {
-        aovs_[addr + "first"] = g->first();
+        for (const auto& kv : g->getMappings()) {
+            aovs_[addr + kv.first] = kv.second;
+        }
+
+        groups_[addr] = g;
     }
 
     void ValueStore::set(Address addr, Value v) {
         values_[addr] = v;
     }
 
-    void ValueStore::set(Address addr, std::shared_ptr<Media> m) {
+    void ValueStore::set(Address addr, std::shared_ptr<Video> v) {
+        videos_[addr] = v;
+        setMedia(addr, v);
+    }
+
+    void ValueStore::set(Address addr, std::shared_ptr<Texture> t) {
+        setMedia(addr, t);
+    }
+
+    void ValueStore::setMedia(Address addr, std::shared_ptr<Media> m) {
         setIsMedia(addr, true);
         media_[addr] = m;
         Resolution res = m->getResolution();
@@ -83,8 +116,13 @@ namespace frag {
 
     void ValueStore::set(Address addr, midi::Control c) {
         if (c.type == midi::CONTROL_TYPE_BUTTON) {
-            values_[addr] = Value(c.isPressed());
-            values_[addr + "toggle"] = Value(c.toggle);
+            std::optional<Value> last_opt = getValue(addr + "hold");
+            bool last_pressed = last_opt.has_value() && last_opt.value().getBool();
+
+            values_[addr + "hold"] = Value(c.isPressed());
+
+            values_[addr + "release"] = Value(last_pressed && !c.isPressed());
+            values_[addr + "press"] = Value(!last_pressed && c.isPressed());
         } else {
             values_[addr] = Value(remap(c.value, c.low, c.high, 0, 1));
         }
