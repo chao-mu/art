@@ -30,60 +30,70 @@ namespace frag {
             return;
         }
 
-        std::lock_guard guard(frame_mutex_);
+        std::lock_guard guard(buffer_mutex_);
 
-        if (buffer_.empty()) {
+        if (buf_a_.empty()) {
             std::cerr << "WARNING: Video buffer empty! Try a video with a lower frame rate. Path:" <<
                 path_ << std::endl;
             return;
         }
 
-        if (!reverse_.load()) {
-            populate(buffer_.back());
-            buffer_.erase(buffer_.end());
-        } else {
-            populate(buffer_.front());
-            buffer_.erase(buffer_.begin());
+        populate(*buf_a_.front().second.get());
+        buf_b_.insert(buf_b_.begin(), buf_a_.front());
+        buf_a_.erase(buf_a_.begin());
+
+        if (buf_b_.size() > buffer_size_) {
+            buf_b_.pop_back();
         }
 
         last_frame_ = std::chrono::high_resolution_clock::now();
     }
 
     void Video::nextChunk() {
-        {
-            std::lock_guard guard(frame_mutex_);
-
-            if (buffer_.size() >= buffer_size_) {
-                return;
-            }
+        if (buf_a_.size() >= buffer_size_) {
+            return;
         }
 
-        bool rev = reverse_.load();
+        bool last_rev = reverse_.load();
+        bool rev = requested_reverse_.load();
+        reverse_ = rev;
 
-        // If in reverse or changing direction.
-        if (rev || last_reverse_.load() != rev) {
-            int pos = static_cast<int>(vid_->get(cv::CAP_PROP_POS_FRAMES));
+        if (last_rev != rev) {
+            std::lock_guard guard(buffer_mutex_);
+            std::swap(buf_a_, buf_b_);
+            buf_b_.clear();
+        }
 
-            // If we were previously reversed account for that rewind...
-            if (last_reverse_.load() && rev) {
-                pos -= reverse_chunk_size_;
+        if (rev) {
+            int pos;
+            {
+                std::lock_guard guard(buffer_mutex_);
+                pos = buf_a_.back().first - reverse_chunk_size_;
             }
 
-            pos -= reverse_chunk_size_;
-
-            // Loop around if need be.
             if (pos < 0) {
                 pos += frame_count_;
+            }
+
+            vid_->set(cv::CAP_PROP_POS_FRAMES, pos);
+        } else if (last_rev) {
+            int pos;
+            {
+                std::lock_guard guard(buffer_mutex_);
+                pos = buf_a_.back().first + 1 % frame_count_;
             }
 
             vid_->set(cv::CAP_PROP_POS_FRAMES, pos);
         }
 
         int chunk_size = rev ? reverse_chunk_size_ : 1;
-        std::vector<cv::Mat> tmp_buf;
+        std::vector<std::pair<int, std::shared_ptr<cv::Mat>>> tmp_buf;
 
         for (int i = 0; i < chunk_size; i++) {
-            cv::Mat frame;
+            int pos = static_cast<int>(vid_->get(cv::CAP_PROP_POS_FRAMES));
+
+            auto ptr = std::make_shared<cv::Mat>();
+            cv::Mat& frame = *ptr.get();
             if (vid_->read(frame)) {
                 cv::cvtColor(frame, frame, cv::COLOR_BGR2RGB);
                 // Flip if capture device
@@ -93,36 +103,29 @@ namespace frag {
                     flip(frame, frame, 0);
                 }
 
-                tmp_buf.push_back(frame);
+                tmp_buf.push_back(std::make_pair(pos, ptr));
             } else {
                 vid_->set(cv::CAP_PROP_POS_FRAMES, 0);
                 i--;
             }
         }
 
-        {
-            std::lock_guard guard(frame_mutex_);
-
-            size_ = tmp_buf.front().size();
-            if (rev) {
-                std::reverse(tmp_buf.begin(), tmp_buf.end());
-                buffer_.insert(buffer_.begin(), tmp_buf.begin(), tmp_buf.end());
-            } else {
-                buffer_.insert(buffer_.end(), tmp_buf.begin(), tmp_buf.end());
-            }
+        if (rev) {
+            std::reverse(tmp_buf.begin(), tmp_buf.end());
         }
 
-        last_reverse_ = rev;
+        {
+            std::lock_guard guard(buffer_mutex_);
+
+            buf_a_.insert(buf_a_.end(), tmp_buf.begin(), tmp_buf.end());
+
+            size_ = tmp_buf.front().second->size();
+        }
     }
 
 
     void Video::setReverse(bool t) {
-        if (last_reverse_.load() != t) {
-            std::lock_guard guard(frame_mutex_);
-            std::reverse(buffer_.begin(), buffer_.end());
-        }
-
-        reverse_ = t;
+        requested_reverse_ = t;
     }
 
 
@@ -181,12 +184,12 @@ namespace frag {
     }
 
     int Video::getWidth() {
-        std::lock_guard guard(frame_mutex_);
+        std::lock_guard guard(buffer_mutex_);
         return size_.width;
     }
 
     int Video::getHeight() {
-        std::lock_guard guard(frame_mutex_);
+        std::lock_guard guard(buffer_mutex_);
         return size_.height;
     }
 

@@ -102,7 +102,7 @@ int main(int argc, const char** argv) {
     TCLAP::ValueArg<std::string> img_out_arg("o", "image-out", "output image path", false, "", "string", cmd);
     TCLAP::ValueArg<std::string> sound_arg("s", "sound-path", "path to sound file", false, "", "string", cmd);
     TCLAP::ValueArg<int> height_arg("", "height", "window height (width will be calculated automatically)", false, 720, "int", cmd);
-    TCLAP::ValueArg<int> pause_arg("p", "pause", "miliseconds to pause between frames", false, 0, "int", cmd);
+    TCLAP::ValueArg<double> fps_arg("", "fps", "FPS to aim for", false, 120, "float", cmd);
     TCLAP::SwitchArg debug_timer_arg("", "debug-timer", "debug time between frames", cmd);
     TCLAP::SwitchArg full_arg("", "full", "maximized, no titlebar", cmd);
 
@@ -238,9 +238,12 @@ int main(int argc, const char** argv) {
     DEBUG_TIME_DECLARE(render)
     DEBUG_TIME_DECLARE(loop)
     DEBUG_TIME_DECLARE(draw)
-    DEBUG_TIME_DECLARE(setControllers)
+    DEBUG_TIME_DECLARE(prepStore)
 
     while (!glfwWindowShouldClose(window)) {
+        //std::chrono::time_point<std::chrono::high_resolution_clock> fps_timer_start =
+        //    std::chrono::high_resolution_clock::now();
+
         DEBUG_TIME_START(loop)
 
         if (flip_playback) {
@@ -257,14 +260,13 @@ int main(int argc, const char** argv) {
         iter = (iter + 1) % INT_MAX;
         store->set(frag::Address("iteration"), frag::Value(static_cast<float>(iter)));
 
-        DEBUG_TIME_START(setControllers)
+        DEBUG_TIME_START(prepStore)
         for (const auto& kv : controllers) {
             const std::string& controller_name = kv.first;
             for (const frag::midi::Control& ctrl : kv.second->getControls()) {
                 store->set(frag::Address(controller_name, ctrl.name), ctrl);
             }
         }
-        DEBUG_TIME_END(setControllers)
 
         for (const auto& kv : videos) {
             store->set(frag::Address(kv.first), kv.second);
@@ -274,13 +276,13 @@ int main(int argc, const char** argv) {
             store->set(frag::Address(kv.first), kv.second);
         }
 
-
         for (const auto& cmd : commands) {
             std::optional<frag::Value> val_opt = store->getValue(cmd->getTrigger());
             if (val_opt.has_value() && val_opt.value().getBool()) {
                 cmd->run(store);
             }
         }
+        DEBUG_TIME_END(prepStore)
 
         for (size_t i=0; i < modules.size(); i++) {
             auto& mod = modules.at(i);
@@ -333,11 +335,19 @@ int main(int argc, const char** argv) {
         // Show buffer
         glfwSwapBuffers(window);
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(pause_arg.getValue()));
-
         first_pass = false;
+        /*
+        std::chrono::duration<double, std::milli> time_elapsed(std::chrono::high_resolution_clock::now() - fps_timer_start);
 
         DEBUG_TIME_END(loop)
+
+        double remainder = (1000 / fps_arg.getValue()) - time_elapsed.count();
+        if (remainder < 0) {
+            //std::cout << "FPS remainder: " << remainder << std::endl;
+        } else {
+            //std::this_thread::sleep_for(std::chrono::duration<double, std::milli>(remainder));
+        }
+        */
     }
 
     return 0;

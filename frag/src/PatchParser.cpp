@@ -12,6 +12,7 @@
 #include "Video.h"
 #include "cmd/Overwrite.h"
 #include "cmd/Reverse.h"
+#include "cmd/Rotate.h"
 
 #define KEY_MEMBERS "members"
 #define KEY_ARGS "args"
@@ -109,6 +110,8 @@ namespace frag {
                 command = std::make_shared<cmd::Reverse>(command_name, trigger, args);
             } else if (command_name == "overwrite") {
                 command = std::make_shared<cmd::Overwrite>(command_name, trigger, args);
+            } else if (command_name == "rotate") {
+                command = std::make_shared<cmd::Rotate>(command_name, trigger, args);
             } else {
                 throw std::runtime_error(
                         "command #" + std::to_string(i) + " has unrecognized command name '" +
