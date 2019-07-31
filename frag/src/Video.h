@@ -17,9 +17,15 @@
 namespace frag {
     class Video : public Texture {
         public:
+            enum Playback {
+                PingPong,
+                Forward,
+                Reverse
+            };
+
             ~Video();
             // Video(int device, double fps=0, cv::Size size=cv::Size(0,0));
-            Video(const std::string& path, bool auto_reset);
+            Video(const std::string& path, bool auto_reset, Playback pb=Forward);
 
             void start();
             void stop();
@@ -58,6 +64,7 @@ namespace frag {
             int buffer_idx_ = 0;
             int frame_count_ = 0;
             bool auto_reset_;
+            Playback playback_;
 
             std::atomic<bool> requested_reverse_ = false;
             std::atomic<bool> requested_reset_ = false;

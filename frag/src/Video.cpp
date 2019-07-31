@@ -12,7 +12,7 @@ namespace frag {
 
     */
 
-    Video::Video(const std::string& path, bool auto_reset) : path_(path), buffer_size_(30), auto_reset_(auto_reset) {
+    Video::Video(const std::string& path, bool auto_reset, Playback pb) : path_(path), buffer_size_(30), auto_reset_(auto_reset), playback_(pb) {
     }
 
     Video::~Video() {
@@ -67,11 +67,14 @@ namespace frag {
 
     void Video::nextChunk() {
         if (requested_reset_.load()) {
+            std::lock_guard guard(buffer_mutex_);
+
             buf_a_.clear();
             buf_b_.clear();
 
             vid_->set(cv::CAP_PROP_POS_FRAMES, 0);
 
+            requested_reverse_ = false;
             requested_reset_ = false;
         }
 
