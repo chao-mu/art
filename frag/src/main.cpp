@@ -75,17 +75,12 @@ void onWindowSize(GLFWwindow* /* window */, int width, int height) {
 std::shared_ptr<frag::Texture> tex_out;
 std::string out_path;
 
-bool flip_playback = false;
-
 // GLFW key press callback
 void onKey(GLFWwindow* window, int key, int /*scancode*/, int action, int /*mods*/) {
     if (action == GLFW_RELEASE) {
         switch (key) {
             case GLFW_KEY_Q:
                 GLCall(glfwSetWindowShouldClose(window, GLFW_TRUE));
-                break;
-            case GLFW_KEY_R:
-                flip_playback = true;
                 break;
             case GLFW_KEY_P:
                 screenshot(tex_out, out_path);
@@ -218,6 +213,11 @@ int main(int argc, const char** argv) {
     std::shared_ptr<frag::ValueStore> store = parser.getValueStore();
     std::vector<std::shared_ptr<frag::cmd::Command>> commands = parser.getCommands();
 
+    std::map<std::string, std::shared_ptr<frag::Media>> media;
+    media.insert(videos.begin(), videos.end());
+    media.insert(images.begin(), images.end());
+
+
     std::map<std::string, std::shared_ptr<frag::Texture>> modules_output;
 
     // Initialize values
@@ -245,22 +245,19 @@ int main(int argc, const char** argv) {
         //    std::chrono::high_resolution_clock::now();
 
         DEBUG_TIME_START(loop)
-
-        if (flip_playback) {
-            for (auto& kv : videos) {
-                kv.second->flipPlayback();
-            }
-            flip_playback = false;
-        }
         GLCall(glfwPollEvents());
 
         DEBUG_TIME_START(render)
 
-        // We will be treating this like an int when passing to shader
         iter = (iter + 1) % INT_MAX;
-        store->set(frag::Address("iteration"), frag::Value(static_cast<float>(iter)));
+
+        for (const auto& kv : media) {
+            kv.second->resetInUse();
+        }
 
         DEBUG_TIME_START(prepStore)
+        store->set(frag::Address("iteration"), frag::Value(static_cast<float>(iter)));
+
         for (const auto& kv : controllers) {
             const std::string& controller_name = kv.first;
             for (const frag::midi::Control& ctrl : kv.second->getControls()) {
@@ -301,6 +298,15 @@ int main(int argc, const char** argv) {
             const frag::Resolution res = mod->getResolution();
             store->set(frag::Address(mod->getOutput(), "resolution"),
                 frag::Value(std::vector({static_cast<float>(res.width), static_cast<float>(res.height)})));
+        }
+
+        for (const auto& kv : videos) {
+            const auto& m = kv.second;
+            if (m->wasInUse() && !m->isInUse()) {
+                m->outFocus();
+            } else if (!m->wasInUse() && m->isInUse()) {
+                m->inFocus();
+            }
         }
 
         DEBUG_TIME_END(render)

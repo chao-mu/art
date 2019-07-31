@@ -18,12 +18,14 @@ namespace frag {
     class Video : public Texture {
         public:
             ~Video();
-            Video(int device, double fps=0, cv::Size size=cv::Size(0,0));
-            Video(const std::string& path);
+            // Video(int device, double fps=0, cv::Size size=cv::Size(0,0));
+            Video(const std::string& path, bool auto_reset);
 
             void start();
             void stop();
             virtual void update() override;
+
+            virtual void outFocus() override;
 
             int getHeight();
             int getWidth();
@@ -34,6 +36,8 @@ namespace frag {
 
         private:
             void nextChunk();
+
+            void seek(int pos);
 
             std::mutex buffer_mutex_;
             cv::Mat frame_;
@@ -50,10 +54,13 @@ namespace frag {
             std::vector<std::pair<int, std::shared_ptr<cv::Mat>>> buf_b_;
             size_t buffer_size_;
             std::atomic<bool> reverse_ = false;
-            std::atomic<bool> requested_reverse_ = false;
             const int reverse_chunk_size_ = 5;
             int buffer_idx_ = 0;
             int frame_count_ = 0;
+            bool auto_reset_;
+
+            std::atomic<bool> requested_reverse_ = false;
+            std::atomic<bool> requested_reset_ = false;
     };
 }
 

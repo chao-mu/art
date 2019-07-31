@@ -6,20 +6,25 @@
 // TODO: Clean this all up with inspiration from the actor model
 
 namespace frag {
+    /*
     Video::Video(int device, double fps, cv::Size size) : device_(device), size_(size), fps_(fps), buffer_size_(1) {
     }
 
-    Video::Video(const std::string& path) : path_(path), buffer_size_(30) {
+    */
+
+    Video::Video(const std::string& path, bool auto_reset) : path_(path), buffer_size_(30), auto_reset_(auto_reset) {
     }
 
     Video::~Video() {
         stop();
     }
 
+    void Video::outFocus() {
+        requested_reset_ = auto_reset_;
+    }
+
     void Video::update() {
-        if (fps_ == 0) {
-            throw std::runtime_error("FIXME: Media.update needs to be lightweight if there is no work to do as it gets called before textures are bound");
-        }
+        Media::update();
 
         std::chrono::high_resolution_clock::time_point now =
             std::chrono::high_resolution_clock::now();
@@ -49,7 +54,27 @@ namespace frag {
         last_frame_ = std::chrono::high_resolution_clock::now();
     }
 
+
+    void Video::seek(int pos) {
+        if (pos < 0) {
+            pos += frame_count_;
+        }
+
+        pos = pos % frame_count_;
+
+        vid_->set(cv::CAP_PROP_POS_FRAMES, pos);
+    }
+
     void Video::nextChunk() {
+        if (requested_reset_.load()) {
+            buf_a_.clear();
+            buf_b_.clear();
+
+            vid_->set(cv::CAP_PROP_POS_FRAMES, 0);
+
+            requested_reset_ = false;
+        }
+
         if (buf_a_.size() >= buffer_size_) {
             return;
         }
@@ -71,19 +96,15 @@ namespace frag {
                 pos = buf_a_.back().first - reverse_chunk_size_;
             }
 
-            if (pos < 0) {
-                pos += frame_count_;
-            }
-
-            vid_->set(cv::CAP_PROP_POS_FRAMES, pos);
+            seek(pos);
         } else if (last_rev) {
             int pos;
             {
                 std::lock_guard guard(buffer_mutex_);
-                pos = buf_a_.back().first + 1 % frame_count_;
+                pos = buf_a_.back().first + 1;
             }
 
-            vid_->set(cv::CAP_PROP_POS_FRAMES, pos);
+            seek(pos);
         }
 
         int chunk_size = rev ? reverse_chunk_size_ : 1;
@@ -134,6 +155,13 @@ namespace frag {
             return;
         }
 
+        vid_ = std::make_unique<cv::VideoCapture>(path_);
+
+        if (!vid_->isOpened()) {
+            throw std::runtime_error("Unable to open video with path " + path_);
+        }
+
+        /*
         if (path_ != "") {
             vid_ = std::make_unique<cv::VideoCapture>(path_);
 
@@ -165,8 +193,10 @@ namespace frag {
         } else {
             fps_ = vid_->get(cv::CAP_PROP_FPS);
         }
+        */
 
         frame_count_ = static_cast<int>(vid_->get(cv::CAP_PROP_FRAME_COUNT));
+        fps_ = vid_->get(cv::CAP_PROP_FPS);
 
         // Fill buffer
         if (path_ != "") {

@@ -14,6 +14,7 @@
 #include "cmd/Reverse.h"
 #include "cmd/Rotate.h"
 
+#define KEY_RESET "reset"
 #define KEY_MEMBERS "members"
 #define KEY_ARGS "args"
 #define KEY_INDEX "index"
@@ -387,7 +388,12 @@ namespace frag {
 
         const std::string path = settings[KEY_PATH].as<std::string>();
 
-        auto vid = std::make_shared<Video>(path);
+        bool auto_reset = false;
+        if (settings[KEY_RESET]) {
+            auto_reset = settings[KEY_RESET].as<bool>();
+        }
+
+        auto vid = std::make_shared<Video>(path, auto_reset);
         if (settings[KEY_SCALE_FILTER]) {
             const std::string filter = settings[KEY_SCALE_FILTER].as<std::string>();
             if (filter == "nearest") {
