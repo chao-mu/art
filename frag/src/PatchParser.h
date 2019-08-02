@@ -49,8 +49,8 @@ namespace frag {
             void parseModules(const YAML::Node& patch);
             void parseGroups(const YAML::Node& patch);
 
-            std::shared_ptr<Texture> loadImage(const std::string& name, const YAML::Node& settings) const;
-            std::shared_ptr<Video> loadVideo(const std::string& name, const YAML::Node& settings) const;
+            std::shared_ptr<Texture> loadImage(const std::string& name, const std::string& path, const YAML::Node& settings) const;
+            std::shared_ptr<Video> loadVideo(const std::string& name, const std::string& path, const YAML::Node& settings) const;
             std::shared_ptr<midi::Device> loadMidiDevice(const std::string& name, const YAML::Node& settings) const;
 
             const std::string path_;

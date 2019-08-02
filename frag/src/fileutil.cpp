@@ -30,6 +30,12 @@ namespace frag {
                 (boost::filesystem::path(relative_to).parent_path() / path).c_str()
             );
         }
+
+        bool hasExtension(const std::string& path, const std::string& ext) {
+            return path.size() >= ext.size() &&
+                path.compare(path.size() - ext.size(), ext.size(), ext) == 0;
+
+        }
     }
 }
 

@@ -10,6 +10,7 @@
 // Ours
 #include "Texture.h"
 #include "Video.h"
+#include "Image.h"
 #include "cmd/Overwrite.h"
 #include "cmd/Reverse.h"
 #include "cmd/Rotate.h"
@@ -204,15 +205,32 @@ namespace frag {
 
             store_->setIsMedia(Address(name), true);
 
-            if (!settings[KEY_TYPE]) {
-                throw std::runtime_error("source '" + name + "' is missing type");
+            std::string path;
+            if (settings.IsMap() && settings[KEY_PATH]) {
+                path = settings[KEY_PATH].as<std::string>();
+            } else if (settings.IsScalar()) {
+                path = settings.as<std::string>();
+            } else {
+                throw std::runtime_error("media '" + name + "' is missing path");
             }
 
-            const std::string type = settings[KEY_TYPE].as<std::string>();
+            std::string type;
+            if (settings.IsMap() && settings[KEY_TYPE]) {
+                type = settings[KEY_TYPE].as<std::string>();
+            } else {
+                if (Image::isImage(path)) {
+                    type = MEDIA_TYPE_IMAGE;
+                } else if (Video::isVideo(path)) {
+                    type = MEDIA_TYPE_VIDEO;
+                } else {
+                    throw std::runtime_error("could not detect type of media '" + name + "' from path");
+                }
+            }
+
             if (type == MEDIA_TYPE_IMAGE) {
-                images_[name] = loadImage(name, settings);
+                images_[name] = loadImage(name, path, settings);
             } else if (type == MEDIA_TYPE_VIDEO) {
-                videos_[name] = loadVideo(name, settings);
+                videos_[name] = loadVideo(name, path, settings);
             } else {
                 throw std::runtime_error("unsupported media type " + type);
             }
@@ -381,29 +399,23 @@ namespace frag {
         return dev;
     }
 
-    std::shared_ptr<Video> PatchParser::loadVideo(const std::string& name, const YAML::Node& settings) const {
-        if (!settings[KEY_PATH]) {
-            throw std::runtime_error("media '" + name + "' is missing path");
-        }
-
-        const std::string path = settings[KEY_PATH].as<std::string>();
-
+    std::shared_ptr<Video> PatchParser::loadVideo(const std::string& name, const std::string& path, const YAML::Node& settings) const {
         bool auto_reset = false;
-        if (settings[KEY_RESET]) {
+        if (settings.IsMap() && settings[KEY_RESET]) {
             auto_reset = settings[KEY_RESET].as<bool>();
         }
 
         auto vid = std::make_shared<Video>(path, auto_reset);
-        if (settings[KEY_SCALE_FILTER]) {
+        if (settings.IsMap() && settings[KEY_SCALE_FILTER]) {
             const std::string filter = settings[KEY_SCALE_FILTER].as<std::string>();
             if (filter == "nearest") {
                 vid->setScaleFilter(GL_NEAREST, GL_NEAREST);
             } else {
-                throw std::runtime_error("Invalid scale filter");
+                throw std::runtime_error("Invalid scale filter for media '" + name + "'");
             }
         }
 
-        if (settings[KEY_PLAYBACK]) {
+        if (settings.IsMap() && settings[KEY_PLAYBACK]) {
             const std::string playback = settings[KEY_PLAYBACK].as<std::string>();
             if (playback == "reverse") {
                 vid->setReverse(true);
@@ -415,16 +427,10 @@ namespace frag {
         return vid;
     }
 
-    std::shared_ptr<Texture> PatchParser::loadImage(const std::string& name, const YAML::Node& settings) const {
-        if (!settings[KEY_PATH]) {
-            throw std::runtime_error("source '" + name + "' is missing path");
-        }
-
-        const std::string img_path = settings[KEY_PATH].as<std::string>();
-
-        cv::Mat image = cv::imread(img_path);
+    std::shared_ptr<Texture> PatchParser::loadImage(const std::string& name, const std::string& path, const YAML::Node& /*settings*/) const {
+        cv::Mat image = cv::imread(path);
         if (image.empty()) {
-            throw std::runtime_error("unable to load image " + img_path);
+            throw std::runtime_error("For media '" + name + "', unable to load image " + path);
         }
 
         cv::cvtColor(image, image, cv::COLOR_BGR2RGB);

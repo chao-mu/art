@@ -40,6 +40,8 @@ namespace frag {
 
             void flipPlayback();
 
+            static bool isVideo(const std::string& path);
+
         private:
             void nextChunk();
 

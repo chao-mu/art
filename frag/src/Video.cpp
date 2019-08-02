@@ -3,6 +3,9 @@
 // STL
 #include <algorithm>
 
+// Ours
+#include "fileutil.h"
+
 // TODO: Clean this all up with inspiration from the actor model
 
 namespace frag {
@@ -235,5 +238,22 @@ namespace frag {
         if (thread_.joinable()) {
             thread_.join();
         }
+    }
+
+    bool Video::isVideo(const std::string& path) {
+        const std::string exts[] = {
+            "3g2", "3gp", "aaf", "asf", "avchd", "avi", "drc", "flv", "m2v",
+            "m4p", "m4v", "mkv", "mng", "mov", "mp2", "mp4", "mpe", "mpeg", "mpg",
+            "mpv", "mxf", "nsv", "ogg", "ogv", "qt", "rm", "rmvb", "roq", "svi",
+            "vob", "webm", "wmv", "yuv"
+        };
+
+        for (const auto& ext : exts) {
+            if (fileutil::hasExtension(path, ext)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
