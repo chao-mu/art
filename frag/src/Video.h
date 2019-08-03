@@ -18,7 +18,7 @@ namespace frag {
     class Video : public Texture {
         public:
             enum Playback {
-                PingPong,
+                Mirror,
                 Forward,
                 Reverse
             };
@@ -33,9 +33,6 @@ namespace frag {
 
             virtual void outFocus() override;
 
-            int getHeight();
-            int getWidth();
-
             void setReverse(bool t);
 
             void flipPlayback();
@@ -43,33 +40,31 @@ namespace frag {
             static bool isVideo(const std::string& path);
 
         private:
-            void nextChunk();
-
+            void next();
             void seek(int pos);
+            std::pair<int, std::shared_ptr<cv::Mat>> readFrame();
 
-            std::mutex buffer_mutex_;
-            cv::Mat frame_;
-            std::unique_ptr<cv::VideoCapture> vid_;
-            std::thread thread_;
-            std::atomic<bool> running_ = false;
-            int device_ = 0;
-            cv::Size size_ = cv::Size(0, 0);
-            double fps_ = 0;
+            // Constructor Parameters
             const std::string path_;
-            std::chrono::high_resolution_clock::time_point last_frame_;
-
-            std::vector<std::pair<int, std::shared_ptr<cv::Mat>>> buf_a_;
-            std::vector<std::pair<int, std::shared_ptr<cv::Mat>>> buf_b_;
             size_t buffer_size_;
             std::atomic<bool> reverse_ = false;
-            const int reverse_chunk_size_ = 5;
-            int buffer_idx_ = 0;
-            int frame_count_ = 0;
             bool auto_reset_;
             Playback playback_;
 
-            std::atomic<bool> requested_reverse_ = false;
+            std::chrono::high_resolution_clock::time_point last_update_;
+            std::mutex buffer_mutex_;
+            std::unique_ptr<cv::VideoCapture> vid_;
+            std::thread thread_;
+            std::atomic<bool> running_ = false;
+            double fps_ = 0;
+
+            std::atomic<int> last_frame_ = 0;
+            int total_frames_ = 0;
+
             std::atomic<bool> requested_reset_ = false;
+
+            int cursor_;
+            std::vector<std::pair<int, std::shared_ptr<cv::Mat>>> buffer_;
     };
 }
 

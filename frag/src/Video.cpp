@@ -15,7 +15,7 @@ namespace frag {
 
     */
 
-    Video::Video(const std::string& path, bool auto_reset, Playback pb) : path_(path), buffer_size_(30), auto_reset_(auto_reset), playback_(pb) {
+    Video::Video(const std::string& path, bool auto_reset, Playback pb) : path_(path), buffer_size_(30), reverse_(pb == Reverse), auto_reset_(auto_reset), playback_(pb) {
     }
 
     Video::~Video() {
@@ -32,7 +32,7 @@ namespace frag {
         std::chrono::high_resolution_clock::time_point now =
             std::chrono::high_resolution_clock::now();
 
-        std::chrono::duration<float> duration = now - last_frame_;
+        std::chrono::duration<float> duration = now - last_update_;
 
         if (duration.count() < 1 / fps_) {
             return;
@@ -40,121 +40,154 @@ namespace frag {
 
         std::lock_guard guard(buffer_mutex_);
 
-        if (buf_a_.empty()) {
+        if (cursor_ < 0 || static_cast<size_t>(cursor_) >= buffer_.size()) {
             std::cerr << "WARNING: Video buffer empty! Try a video with a lower frame rate. Path:" <<
                 path_ << std::endl;
+
             return;
         }
 
-        populate(*buf_a_.front().second.get());
-        buf_b_.insert(buf_b_.begin(), buf_a_.front());
-        buf_a_.erase(buf_a_.begin());
+        std::pair<int, std::shared_ptr<cv::Mat>> frame = buffer_.at(cursor_);
+        populate(*frame.second);
 
-        if (buf_b_.size() > buffer_size_) {
-            buf_b_.pop_back();
+        if (playback_ == Mirror) {
+            if (frame.first >= last_frame_.load()) {
+                reverse_ = true;
+            } else if (frame.first == 0) {
+                reverse_ = false;
+            }
         }
 
-        last_frame_ = std::chrono::high_resolution_clock::now();
+        if (reverse_) {
+            cursor_--;
+        } else {
+            cursor_++;
+        }
+
+        last_update_ = std::chrono::high_resolution_clock::now();
     }
 
+    std::pair<int, std::shared_ptr<cv::Mat>> Video::readFrame() {
+        int pos = static_cast<int>(vid_->get(cv::CAP_PROP_POS_FRAMES));
+        auto ptr = std::make_shared<cv::Mat>();
+        cv::Mat& frame = *ptr;
+        if (vid_->read(frame)) {
+            cv::cvtColor(frame, frame, cv::COLOR_BGR2RGB);
+            // Flip if capture device
+            if (path_ == "") {
+                flip(frame, frame, -1);
+            } else {
+                flip(frame, frame, 0);
+            }
+        } else {
+            last_frame_ = pos - 1;
+
+            vid_->set(cv::CAP_PROP_POS_FRAMES, 0);
+
+            return readFrame();
+        }
+
+        return std::make_pair(pos, ptr);
+    }
 
     void Video::seek(int pos) {
         if (pos < 0) {
-            pos += frame_count_;
+            pos += last_frame_;
         }
 
-        pos = pos % frame_count_;
+        pos = pos % (last_frame_ + 1);
 
         vid_->set(cv::CAP_PROP_POS_FRAMES, pos);
     }
 
-    void Video::nextChunk() {
-        if (requested_reset_.load()) {
+    void Video::next() {
+        // At the end of the day, this is where we want the read cursor to end up.
+        int middle = static_cast<int>(static_cast<double>(buffer_size_) * 0.5);
+
+        // If we have a reset request, set the cursor to the start of the video
+        // if it exists in our buffer.
+        if (requested_reset_.load() && !buffer_.empty()) {
             std::lock_guard guard(buffer_mutex_);
 
-            buf_a_.clear();
-            buf_b_.clear();
-
-            vid_->set(cv::CAP_PROP_POS_FRAMES, 0);
-
-            requested_reverse_ = false;
             requested_reset_ = false;
+
+            bool found = false;
+            for (int i=0; i < static_cast<int>(buffer_size_); i++) {
+                if (buffer_.at(i).first == 0) {
+                    found = true;
+                    cursor_ = i;
+                    break;
+                }
+            }
+
+            if (!found) {
+                buffer_.clear();
+            }
         }
 
-        if (buf_a_.size() >= buffer_size_) {
+        if (buffer_.empty()) {
+            std::lock_guard guard(buffer_mutex_);
+
+            // Start from half the buffersize before the end of the video.
+            seek(-middle);
+            while (buffer_.size() < buffer_size_) {
+                buffer_.push_back(readFrame());
+            }
+
+            cursor_ = middle;
+
             return;
         }
 
-        bool last_rev = reverse_.load();
-        bool rev = requested_reverse_.load();
-        reverse_ = rev;
-
-        if (last_rev != rev) {
-            std::lock_guard guard(buffer_mutex_);
-            std::swap(buf_a_, buf_b_);
-            buf_b_.clear();
-        }
-
-        if (rev) {
-            int pos;
-            {
-                std::lock_guard guard(buffer_mutex_);
-                pos = buf_a_.back().first - reverse_chunk_size_;
-            }
-
-            seek(pos);
-        } else if (last_rev) {
-            int pos;
-            {
-                std::lock_guard guard(buffer_mutex_);
-                pos = buf_a_.back().first + 1;
-            }
-
-            seek(pos);
-        }
-
-        int chunk_size = rev ? reverse_chunk_size_ : 1;
-        std::vector<std::pair<int, std::shared_ptr<cv::Mat>>> tmp_buf;
-
-        for (int i = 0; i < chunk_size; i++) {
-            int pos = static_cast<int>(vid_->get(cv::CAP_PROP_POS_FRAMES));
-
-            auto ptr = std::make_shared<cv::Mat>();
-            cv::Mat& frame = *ptr.get();
-            if (vid_->read(frame)) {
-                cv::cvtColor(frame, frame, cv::COLOR_BGR2RGB);
-                // Flip if capture device
-                if (path_ == "") {
-                    flip(frame, frame, -1);
-                } else {
-                    flip(frame, frame, 0);
-                }
-
-                tmp_buf.push_back(std::make_pair(pos, ptr));
-            } else {
-                vid_->set(cv::CAP_PROP_POS_FRAMES, 0);
-                i--;
-            }
-        }
-
-        if (rev) {
-            std::reverse(tmp_buf.begin(), tmp_buf.end());
-        }
-
+        int diff, front_pos, back_pos;
         {
             std::lock_guard guard(buffer_mutex_);
 
-            buf_a_.insert(buf_a_.end(), tmp_buf.begin(), tmp_buf.end());
+            diff = cursor_ - middle;;
+            front_pos = buffer_.front().first;
+            back_pos = buffer_.back().first;
+        }
 
-            size_ = tmp_buf.front().second->size();
+
+        // Fill in order to make the current frame the center frame of the buffer.
+        if (diff < 0) {
+            // Absolute diff.
+            diff *= -1;
+
+            // Jump back by the amount we need to read to catch up.
+            seek(front_pos - diff);
+
+            std::vector<std::pair<int, std::shared_ptr<cv::Mat>>> tmp_buf;
+            for (int i=0; i < diff; i++) {
+                tmp_buf.push_back(readFrame());
+            }
+
+            {
+                std::lock_guard guard(buffer_mutex_);
+                buffer_.insert(buffer_.begin(), tmp_buf.begin(), tmp_buf.end());
+                buffer_.erase(buffer_.end() - diff, buffer_.end());
+
+                // Compensate for the current frame moving forwards.
+                cursor_ += diff;
+            }
+        } else if (diff > 0) {
+            seek(back_pos + 1);
+
+            std::vector<std::pair<int, std::shared_ptr<cv::Mat>>> tmp_buf;
+            for (int i=0; i < diff; i++) {
+                tmp_buf.push_back(readFrame());
+            }
+
+            {
+                std::lock_guard guard(buffer_mutex_);
+                buffer_.insert(buffer_.end(), tmp_buf.begin(), tmp_buf.end());
+                buffer_.erase(buffer_.begin(), buffer_.begin() + diff);
+
+                // Compensate for the current frame moving backwards.
+                cursor_ -= diff;
+            }
         }
     }
-
-
-    void Video::setReverse(bool t) {
-        requested_reverse_ = t;
-    }
-
 
     void Video::start() {
         if (running_.load()) {
@@ -201,36 +234,35 @@ namespace frag {
         }
         */
 
-        frame_count_ = static_cast<int>(vid_->get(cv::CAP_PROP_FRAME_COUNT));
-        fps_ = vid_->get(cv::CAP_PROP_FPS);
-
-        // Fill buffer
-        if (path_ != "") {
-            for (size_t i = 0; i < buffer_size_; i++) {
-                nextChunk();
-            }
+        // This is a guess, apparently it can be wrong
+        int total_frames = static_cast<int>(vid_->get(cv::CAP_PROP_FRAME_COUNT));
+        if (total_frames < 0) {
+            throw std::runtime_error("Unable to accurately determine number of frames for " + path_);
         }
+
+        last_frame_ = total_frames - 1;
+
+        fps_ = vid_->get(cv::CAP_PROP_FPS);
+        if (fps_ <= 0) {
+            throw std::runtime_error("Unable to accurately determine number FPS for " + path_);
+        }
+
+        next();
 
         running_ = true;
         thread_ = std::thread([this]{
             while (running_.load()) {
-                nextChunk();
+                next();
             }
         });
     }
 
-    int Video::getWidth() {
-        std::lock_guard guard(buffer_mutex_);
-        return size_.width;
-    }
-
-    int Video::getHeight() {
-        std::lock_guard guard(buffer_mutex_);
-        return size_.height;
-    }
-
     void Video::flipPlayback() {
         setReverse(!reverse_);
+    }
+
+    void Video::setReverse(bool t) {
+        reverse_ = t;
     }
 
     void Video::stop() {

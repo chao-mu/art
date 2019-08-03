@@ -405,20 +405,23 @@ namespace frag {
             auto_reset = settings[KEY_RESET].as<bool>();
         }
 
-        auto vid = std::make_shared<Video>(path, auto_reset);
+        Video::Playback pb = Video::Forward;
+        if (settings.IsMap() && settings[KEY_PLAYBACK]) {
+            const std::string playback = settings[KEY_PLAYBACK].as<std::string>();
+            if (playback == "reverse") {
+                pb = Video::Reverse;
+            } else if (playback == "mirror") {
+                pb = Video::Mirror;
+            }
+        }
+
+        auto vid = std::make_shared<Video>(path, auto_reset, pb);
         if (settings.IsMap() && settings[KEY_SCALE_FILTER]) {
             const std::string filter = settings[KEY_SCALE_FILTER].as<std::string>();
             if (filter == "nearest") {
                 vid->setScaleFilter(GL_NEAREST, GL_NEAREST);
             } else {
                 throw std::runtime_error("Invalid scale filter for media '" + name + "'");
-            }
-        }
-
-        if (settings.IsMap() && settings[KEY_PLAYBACK]) {
-            const std::string playback = settings[KEY_PLAYBACK].as<std::string>();
-            if (playback == "reverse") {
-                vid->setReverse(true);
             }
         }
 
