@@ -6,8 +6,6 @@
 // Ours
 #include "fileutil.h"
 
-// TODO: Clean this all up with inspiration from the actor model
-
 namespace frag {
     /*
     Video::Video(int device, double fps, cv::Size size) : device_(device), size_(size), fps_(fps), buffer_size_(1) {
@@ -49,6 +47,8 @@ namespace frag {
 
         std::pair<int, std::shared_ptr<cv::Mat>> frame = buffer_.at(cursor_);
         populate(*frame.second);
+
+        //std::cout << path_ << " " << frame.first << std::endl;
 
         if (playback_ == Mirror) {
             if (frame.first >= last_frame_.load()) {
@@ -92,10 +92,10 @@ namespace frag {
 
     void Video::seek(int pos) {
         if (pos < 0) {
-            pos += last_frame_;
+            pos += total_frames_;
         }
 
-        pos = pos % (last_frame_ + 1);
+        pos = pos % total_frames_;
 
         vid_->set(cv::CAP_PROP_POS_FRAMES, pos);
     }
@@ -110,6 +110,7 @@ namespace frag {
             std::lock_guard guard(buffer_mutex_);
 
             requested_reset_ = false;
+            reverse_ = false;
 
             bool found = false;
             for (int i=0; i < static_cast<int>(buffer_size_); i++) {
@@ -130,11 +131,14 @@ namespace frag {
 
             // Start from half the buffersize before the end of the video.
             seek(-middle);
-            while (buffer_.size() < buffer_size_) {
-                buffer_.push_back(readFrame());
-            }
+            for (int i=0; i < static_cast<int>(buffer_size_); i++) {
+                std::pair<int, std::shared_ptr<cv::Mat>> frame = readFrame();
+                if (frame.first == 0) {
+                    cursor_ = i;
+                }
 
-            cursor_ = middle;
+                buffer_.push_back(frame);
+            }
 
             return;
         }
@@ -235,12 +239,12 @@ namespace frag {
         */
 
         // This is a guess, apparently it can be wrong
-        int total_frames = static_cast<int>(vid_->get(cv::CAP_PROP_FRAME_COUNT));
-        if (total_frames < 0) {
+        total_frames_ = static_cast<int>(vid_->get(cv::CAP_PROP_FRAME_COUNT));
+        if (total_frames_ < 0) {
             throw std::runtime_error("Unable to accurately determine number of frames for " + path_);
         }
 
-        last_frame_ = total_frames - 1;
+        last_frame_ = total_frames_ - 1;
 
         fps_ = vid_->get(cv::CAP_PROP_FPS);
         if (fps_ <= 0) {
