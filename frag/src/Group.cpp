@@ -14,8 +14,16 @@ namespace frag {
     }
 
     void Group::rotate() {
-        std::rotate(elements_.begin(), elements_.begin(), elements_.end());
+        std::rotate(elements_.begin(), elements_.begin() + 1, elements_.end());
     }
+
+    /* Commented out because I don't need it yet
+    void Group::rotateIndex() {
+        for (auto& kv : mappings_) {
+            kv.second = kv.second + 1 % elements_.size();
+        }
+    }
+    */
 
     AddressOrValue Group::exchange(const std::string& key, AddressOrValue aov) {
         AddressOrValue old = elements_.at(mappings_.at(key));
