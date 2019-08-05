@@ -6,6 +6,8 @@
 // Ours
 #include "fileutil.h"
 
+#define SLEEP_FOR_MS 16
+
 namespace frag {
     /*
     Video::Video(int device, double fps, cv::Size size) : device_(device), size_(size), fps_(fps), buffer_size_(1) {
@@ -256,6 +258,7 @@ namespace frag {
         running_ = true;
         thread_ = std::thread([this]{
             while (running_.load()) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(SLEEP_FOR_MS));
                 next();
             }
         });

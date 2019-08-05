@@ -7,6 +7,8 @@
 #include "Message.h"
 #include "../MathUtil.h"
 
+#define SLEEP_FOR_MS 5
+
 namespace frag {
     namespace midi {
         Device::Device(const std::string& path) : path_(path), midi_in_(new RtMidiIn()), running_(false) {
@@ -127,7 +129,7 @@ namespace frag {
                     }
                 }
 
-                std::this_thread::sleep_for(std::chrono::milliseconds(5));
+                std::this_thread::sleep_for(std::chrono::milliseconds(SLEEP_FOR_MS));
             }
         }
     }
