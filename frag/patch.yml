@@ -2,30 +2,226 @@ resolution:
     width: 1920
     height: 1080
 
+controllers:
+    midi:
+        type: midi
+        path: midi/akai-apc40.yml
+
+# TODO: media -> videos and get rid of "type" and allow for one-liners.
+# OR do type detection. maybe special key "$" that takes an array of paths
+# and the name is calculated from the path
 media:
-    galaxy:
-        type: image
-        path: ../content/potw1927a.png
+    drink:
+        path: assets/1970/4096_Misc_TV_Commercials_Epic_Coffee/turn_and_drink.mkv
+        reset: true
+        playback: mirror
 
-    vid1:
-        type: video
-        path: /home/hackpoetic/vj/assets/1970/4096_Misc_TV_Commercials_Epic_Coffee/turn_and_drink.mkv
+    this_is_coffee:
+        path: assets/1961/ThisisCo1961/this-is-coffee.mkv
+        playback: mirror
 
-    vid2:
-        type: video
-        path: /home/hackpoetic/vj/assets/1970/0649_Early_1970s_Television_Commercials_20_07_34_00_3mb/disney_family_walking.mkv
+    sniffing:
+        path: assets/1961/ThisisCo1961/sniffing-rotating-coffee.mkv
+        reset: true
+
+    typewriter: assets/1961/ThisisCo1961/coffee-typewriter.mkv
+
+    drink_reaction_1:
+        path: assets/1970/4096_Misc_TV_Commercials_Epic_Coffee/drink_reaction_1.mkv
+        reset: true
+        playback: mirror
+
+    drink_reaction_2:
+        path: assets/1970/4096_Misc_TV_Commercials_Epic_Coffee/drink_reaction_2.mkv
+        reset: true
+        playback: mirror
+
+    drink_reaction_3:
+        path: assets/1970/4096_Misc_TV_Commercials_Epic_Coffee/drink_reaction_3.mkv
+        reset: true
+        playback: mirror
+
+    drink_wow:
+        path: assets/1970/4096_Misc_TV_Commercials_Epic_Coffee/drink_wow_expression.mkv
+        reset: true
+
+    coffee_grounds: assets/1970/4096_Misc_TV_Commercials_Epic_Coffee/coffee_grounds.mkv
+
+    fantastic:
+        path: assets/1970/4096_Misc_TV_Commercials_Epic_Coffee/drink_says_fantastic.mkv
+        reset: true
+
+    coffee_science: assets/1970/4096_Misc_TV_Commercials_Epic_Coffee/coffee_science.mkv
+
+    text_coffee: assets/1970/4096_Misc_TV_Commercials_Epic_Coffee/text_traveling_through_coughy_device.mkv
+
+    epic:
+        path: assets/1970/4096_Misc_TV_Commercials_Epic_Coffee/epic_logo_flare.mkv
+        reset: true
+
+    coffee_water: assets/1970/4096_Misc_TV_Commercials_Epic_Coffee/coffee_plus_water.mkv
+
+    water: assets/1970/4096_Misc_TV_Commercials_Epic_Coffee/pour_water.mkv
+
+    eye_closeup:
+        path: assets/1970/4096_Misc_TV_Commercials_Epic_Coffee/eye_open.mkv
+        reset: true
+        playback: mirror
+
+    film_writing: assets/1970/4096_Misc_TV_Commercials_Epic_Coffee/film_writing.mkv
+
+    droplets: assets/1961/ThisisCo1961/droplets_1.mkv
+
+    rotating_coffee:
+        path: assets/1961/ThisisCo1961/rotating-coffee.mkv
+        reset: true
+
+    clean_coffee: assets/1961/ThisisCo1961/clean-coffee-pot.mkv
+
+    stairs: assets/1961/ThisisCo1961/walk-down-stairs.mkv
+
+    long_method: assets/1961/ThisisCo1961/other-method.mkv
+
+    drip_coffee_method:
+        path: assets/1961/ThisisCo1961/drip-coffee-method.mkv
+        playback: mirror
+
+    dance-1: assets/1961/TouchofM1961/dance-1.mkv
+    dance-2: assets/1961/TouchofM1961/dance-2.mkv
+    dance-3: assets/1961/TouchofM1961/dance-3.mkv
+    dance-4: assets/1961/TouchofM1961/dance-4.mkv
+
+    scarf-flying:
+        path: assets/1961/TouchofM1961/scarf-flying.mkv
+        playback: mirror
+
+    turn-twist:
+        path: assets/1961/TouchofM1961/head-turn.mkv
+        reset: true
+        playback: mirror
+
+    fire-breath:
+        path: assets/1961/TouchofM1961/fire-breath.mkv
+        reset: true
+        playback: mirror
+
+    fridge:
+        path: assets/1961/TouchofM1961/fridge.mkv
+        reset: true
 
 groups:
-    vids: [vid1, vid2]
+    scene:
+        members: [eye_closeup, dance-1]
+        index: [a, b]
+
+commands:
+    - command: reverse
+      trigger-and-args:
+          - [midi.play.press, scene.a]
+          - [midi.stop.press, scene.b]
+
+    - command: rotate
+      trigger: midi.rec.press
+      args: [scene]
+
+    - command: overwrite
+      trigger-and-args:
+          - [midi.cl_1_1.press, scene.a, eye_closeup]
+          - [midi.cl_2_1.press, scene.a, epic]
+          - [midi.cl_3_1.press, scene.a, drink_reaction_1]
+
+    - command: overwrite
+      trigger-and-args:
+          - [midi.cl_1_2.press, scene.a, drink_reaction_2]
+          - [midi.cl_2_2.press, scene.a, drink_reaction_3]
+          - [midi.cl_3_2.press, scene.a, drink_wow]
+          - [midi.cl_4_2.press, scene.a, fantastic]
+
+    - command: overwrite
+      trigger-and-args:
+          - [midi.cl_1_3.press, scene.a, clean_coffee]
+          - [midi.cl_2_3.press, scene.a, text_coffee]
+          - [midi.cl_3_3.press, scene.a, coffee_science]
+          - [midi.cl_4_3.press, scene.a, typewriter]
+
+            #- [midi.cl_6_3.press, scene.a, drip_coffee_method]
+            #- [midi.cl_2_3.press, scene.a, long_method]
+
+    - command: overwrite
+      trigger-and-args:
+          - [midi.cl_1_4.press, scene.a, sniffing]
+          - [midi.cl_2_4.press, scene.a, stairs]
+          - [midi.cl_3_4.press, scene.a, coffee_grounds]
+          - [midi.cl_4_4.press, scene.a, droplets]
+            #- [midi.cl_2_4.press, scene.a, rotating_coffee]
+            # - [midi.cl_1_4.press, scene.a, this_is_coffee]
+
+    # Dancing
+    - command: overwrite
+      trigger-and-args:
+          - [midi.cl_5_1.press, scene.b, dance-1]
+          - [midi.cl_6_1.press, scene.b, dance-2]
+          - [midi.cl_7_1.press, scene.b, dance-3]
+          - [midi.cl_8_1.press, scene.b, dance-4]
+
+    # Loopables
+    - command: overwrite
+      trigger-and-args:
+          - [midi.cl_5_2.press, scene.b, scarf-flying]
+          - [midi.cl_6_2.press, scene.b, turn-twist]
+          - [midi.cl_7_2.press, scene.b, fire-breath]
+          - [midi.cl_8_2.press, scene.b, fridge]
 
 modules:
-    - output: vid1
+    - output: a
       path: personal/center.glsl
       inputs:
-          img0: vids.first
-#
-#    - output: o
-#      path: shaders/blend_diff.glsl
-#      inputs:
-#          a: vids.first
-#          b: galaxy
+          img0: scene.a
+
+    - output: b
+      path: personal/center.glsl
+      inputs:
+          img0: scene.b
+
+    - output: o
+      path: shaders/mix_methods.glsl
+      inputs:
+          a: a
+          b: b
+          mix_fade: midi.fader_1
+          mix_bars: midi.fader_2
+          mix_lumin: midi.fader_3
+
+    - output: o
+      path: shaders/mix_methods.glsl
+      inputs:
+          a: a
+          b: b
+          mix_fade: midi.fader_1
+          mix_bars: midi.fader_2
+          mix_lumin_a: midi.fader_3
+          mix_lumin_b: midi.fader_4
+
+    - output: o
+      path: shaders/weird_color_2.glsl
+      inputs:
+          img0: o
+          mix: midi.tc_1
+
+    - output: o
+      path: shaders/edges.glsl
+      inputs:
+          img0: o
+          mix: midi.tc_2
+
+    - output: o
+      path: shaders/weird_color_1.glsl
+      inputs:
+          img0: o
+          mix: midi.tc_3
+
+    - output: o
+      path: shaders/invert.glsl
+      inputs:
+          img0: o
+          mix: midi.activator_1
