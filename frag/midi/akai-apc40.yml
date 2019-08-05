@@ -1,0 +1,799 @@
+mappings:
+  activator_1:
+    channel: 0
+    function: 50
+    high: 127
+    low: 0
+    type: button
+  activator_2:
+    channel: 1
+    function: 50
+    high: 127
+    low: 0
+    type: button
+  activator_3:
+    channel: 2
+    function: 50
+    high: 127
+    low: 0
+    type: button
+  activator_4:
+    channel: 3
+    function: 50
+    high: 127
+    low: 0
+    type: button
+  activator_5:
+    channel: 4
+    function: 50
+    high: 127
+    low: 0
+    type: button
+  activator_6:
+    channel: 5
+    function: 50
+    high: 127
+    low: 0
+    type: button
+  activator_7:
+    channel: 6
+    function: 50
+    high: 127
+    low: 0
+    type: button
+  activator_8:
+    channel: 7
+    function: 50
+    high: 127
+    low: 0
+    type: button
+  arm_1:
+    channel: 0
+    function: 48
+    high: 127
+    low: 0
+    type: button
+  arm_2:
+    channel: 1
+    function: 48
+    high: 127
+    low: 0
+    type: button
+  arm_3:
+    channel: 2
+    function: 48
+    high: 127
+    low: 0
+    type: button
+  arm_4:
+    channel: 3
+    function: 48
+    high: 127
+    low: 0
+    type: button
+  arm_5:
+    channel: 4
+    function: 48
+    high: 127
+    low: 0
+    type: button
+  arm_6:
+    channel: 5
+    function: 48
+    high: 127
+    low: 0
+    type: button
+  arm_7:
+    channel: 6
+    function: 48
+    high: 127
+    low: 0
+    type: button
+  arm_8:
+    channel: 7
+    function: 48
+    high: 127
+    low: 0
+    type: button
+  bank_down:
+    channel: 0
+    function: 95
+    high: 127
+    low: 0
+    type: button
+  bank_left:
+    channel: 0
+    function: 97
+    high: 127
+    low: 0
+    type: button
+  bank_right:
+    channel: 0
+    function: 96
+    high: 127
+    low: 0
+    type: button
+  bank_up:
+    channel: 0
+    function: 94
+    high: 127
+    low: 0
+    type: button
+  cl_1_1:
+    channel: 0
+    function: 53
+    high: 127
+    low: 0
+    type: button
+  cl_2_1:
+    channel: 1
+    function: 53
+    high: 127
+    low: 0
+    type: button
+  cl_3_1:
+    channel: 2
+    function: 53
+    high: 127
+    low: 0
+    type: button
+  cl_4_1:
+    channel: 3
+    function: 53
+    high: 127
+    low: 0
+    type: button
+  cl_5_1:
+    channel: 4
+    function: 53
+    high: 127
+    low: 0
+    type: button
+  cl_6_1:
+    channel: 5
+    function: 53
+    high: 127
+    low: 0
+    type: button
+  cl_7_1:
+    channel: 6
+    function: 53
+    high: 127
+    low: 0
+    type: button
+  cl_1_2:
+    channel: 0
+    function: 54
+    high: 127
+    low: 0
+    type: button
+  cl_2_2:
+    channel: 1
+    function: 54
+    high: 127
+    low: 0
+    type: button
+  cl_3_2:
+    channel: 2
+    function: 54
+    high: 127
+    low: 0
+    type: button
+  cl_4_2:
+    channel: 3
+    function: 54
+    high: 127
+    low: 0
+    type: button
+  cl_5_2:
+    channel: 4
+    function: 54
+    high: 127
+    low: 0
+    type: button
+  cl_6_2:
+    channel: 5
+    function: 54
+    high: 127
+    low: 0
+    type: button
+  cl_7_2:
+    channel: 6
+    function: 54
+    high: 127
+    low: 0
+    type: button
+  cl_1_3:
+    channel: 0
+    function: 55
+    high: 127
+    low: 0
+    type: button
+  cl_2_3:
+    channel: 1
+    function: 55
+    high: 127
+    low: 0
+    type: button
+  cl_3_3:
+    channel: 2
+    function: 55
+    high: 127
+    low: 0
+    type: button
+  cl_4_3:
+    channel: 3
+    function: 55
+    high: 127
+    low: 0
+    type: button
+  cl_5_3:
+    channel: 4
+    function: 55
+    high: 127
+    low: 0
+    type: button
+  cl_6_3:
+    channel: 5
+    function: 55
+    high: 127
+    low: 0
+    type: button
+  cl_7_3:
+    channel: 6
+    function: 55
+    high: 127
+    low: 0
+    type: button
+  cl_1_4:
+    channel: 0
+    function: 56
+    high: 127
+    low: 0
+    type: button
+  cl_2_4:
+    channel: 1
+    function: 56
+    high: 127
+    low: 0
+    type: button
+  cl_3_4:
+    channel: 2
+    function: 56
+    high: 127
+    low: 0
+    type: button
+  cl_4_4:
+    channel: 3
+    function: 56
+    high: 127
+    low: 0
+    type: button
+  cl_5_4:
+    channel: 4
+    function: 56
+    high: 127
+    low: 0
+    type: button
+  cl_6_4:
+    channel: 5
+    function: 56
+    high: 127
+    low: 0
+    type: button
+  cl_7_4:
+    channel: 6
+    function: 56
+    high: 127
+    low: 0
+    type: button
+  cl_1_5:
+    channel: 0
+    function: 57
+    high: 127
+    low: 0
+    type: button
+  cl_2_5:
+    channel: 1
+    function: 57
+    high: 127
+    low: 0
+    type: button
+  cl_3_5:
+    channel: 2
+    function: 57
+    high: 127
+    low: 0
+    type: button
+  cl_4_5:
+    channel: 3
+    function: 57
+    high: 127
+    low: 0
+    type: button
+  cl_5_5:
+    channel: 4
+    function: 57
+    high: 127
+    low: 0
+    type: button
+  cl_6_5:
+    channel: 5
+    function: 57
+    high: 127
+    low: 0
+    type: button
+  cl_7_5:
+    channel: 6
+    function: 57
+    high: 127
+    low: 0
+    type: button
+  cl_8_1:
+    channel: 7
+    function: 53
+    high: 127
+    low: 0
+    type: button
+  cl_8_2:
+    channel: 7
+    function: 54
+    high: 127
+    low: 0
+    type: button
+  cl_8_3:
+    channel: 7
+    function: 55
+    high: 127
+    low: 0
+    type: button
+  cl_8_4:
+    channel: 7
+    function: 56
+    high: 127
+    low: 0
+    type: button
+  cl_8_5:
+    channel: 7
+    function: 57
+    high: 127
+    low: 0
+    type: button
+  clip_stop_1:
+    channel: 0
+    function: 52
+    high: 127
+    low: 0
+    type: button
+  clip_stop_2:
+    channel: 1
+    function: 52
+    high: 127
+    low: 0
+    type: button
+  clip_stop_3:
+    channel: 2
+    function: 52
+    high: 127
+    low: 0
+    type: button
+  clip_stop_4:
+    channel: 3
+    function: 52
+    high: 127
+    low: 0
+    type: button
+  clip_stop_5:
+    channel: 4
+    function: 52
+    high: 127
+    low: 0
+    type: button
+  clip_stop_6:
+    channel: 5
+    function: 52
+    high: 127
+    low: 0
+    type: button
+  clip_stop_7:
+    channel: 6
+    function: 52
+    high: 127
+    low: 0
+    type: button
+  clip_stop_8:
+    channel: 7
+    function: 52
+    high: 127
+    low: 0
+    type: button
+  cross_fade:
+    channel: 0
+    function: 15
+    high: 127
+    low: 0
+    type: fader
+  cue_level:
+    channel: 0
+    function: 47
+    high: 127
+    low: 0
+    type: fader
+  dc_1:
+    channel: 7
+    function: 16
+    high: 127
+    low: 0
+    type: fader
+  dc_2:
+    channel: 7
+    function: 17
+    high: 127
+    low: 0
+    type: fader
+  dc_3:
+    channel: 7
+    function: 18
+    high: 127
+    low: 0
+    type: fader
+  dc_4:
+    channel: 7
+    function: 19
+    high: 127
+    low: 0
+    type: fader
+  dc_5:
+    channel: 7
+    function: 20
+    high: 127
+    low: 0
+    type: fader
+  dc_6:
+    channel: 7
+    function: 21
+    high: 127
+    low: 0
+    type: fader
+  dc_7:
+    channel: 7
+    function: 22
+    high: 127
+    low: 0
+    type: fader
+  dc_8:
+    channel: 7
+    function: 23
+    high: 127
+    low: 0
+    type: fader
+  dc_clip:
+    channel: 7
+    function: 58
+    high: 127
+    low: 0
+    type: button
+  dc_left:
+    channel: 7
+    function: 60
+    high: 127
+    low: 0
+    type: button
+  dc_on_off:
+    channel: 7
+    function: 59
+    high: 127
+    low: 0
+    type: button
+  dc_right:
+    channel: 7
+    function: 61
+    high: 127
+    low: 0
+    type: button
+  detail_view:
+    channel: 7
+    function: 62
+    high: 127
+    low: 0
+    type: button
+  fader_1:
+    channel: 0
+    function: 7
+    high: 127
+    low: 0
+    type: fader
+  fader_2:
+    channel: 1
+    function: 7
+    high: 127
+    low: 0
+    type: fader
+  fader_3:
+    channel: 2
+    function: 7
+    high: 127
+    low: 0
+    type: fader
+  fader_4:
+    channel: 3
+    function: 7
+    high: 127
+    low: 0
+    type: fader
+
+  fader_5:
+    channel: 4
+    function: 7
+    high: 127
+    low: 0
+    type: fader
+
+  fader_6:
+    channel: 5
+    function: 7
+    high: 127
+    low: 0
+    type: fader
+
+
+  fader_7:
+    channel: 6
+    function: 7
+    high: 127
+    low: 0
+    type: fader
+
+  fader_8:
+    channel: 7
+    function: 7
+    high: 127
+    low: 0
+    type: fader
+  fader_master:
+    channel: 0
+    function: 14
+    high: 127
+    low: 0
+    type: fader
+  launch_1:
+    channel: 0
+    function: 82
+    high: 127
+    low: 0
+    type: button
+  launch_2:
+    channel: 0
+    function: 83
+    high: 127
+    low: 0
+    type: button
+  launch_3:
+    channel: 0
+    function: 84
+    high: 127
+    low: 0
+    type: button
+  launch_4:
+    channel: 0
+    function: 85
+    high: 127
+    low: 0
+    type: button
+  launch_5:
+    channel: 0
+    function: 86
+    high: 127
+    low: 0
+    type: button
+  metranome:
+    channel: 7
+    function: 65
+    high: 127
+    low: 0
+    type: button
+  nudge_minus:
+    channel: 0
+    function: 101
+    high: 127
+    low: 0
+    type: button
+  nudge_plus:
+    channel: 0
+    function: 100
+    high: 127
+    low: 0
+    type: button
+  overdub:
+    channel: 7
+    function: 64
+    high: 127
+    low: 0
+    type: button
+  play:
+    channel: 0
+    function: 91
+    high: 127
+    low: 0
+    type: button
+  quantize:
+    channel: 7
+    function: 63
+    high: 127
+    low: 0
+    type: button
+  rec:
+    channel: 0
+    function: 93
+    high: 127
+    low: 0
+    type: button
+  shift:
+    channel: 0
+    function: 98
+    high: 127
+    low: 0
+    type: button
+  solo_1:
+    channel: 0
+    function: 49
+    high: 127
+    low: 0
+    type: button
+  solo_2:
+    channel: 1
+    function: 49
+    high: 127
+    low: 0
+    type: button
+  solo_3:
+    channel: 2
+    function: 49
+    high: 127
+    low: 0
+    type: button
+  solo_4:
+    channel: 3
+    function: 49
+    high: 127
+    low: 0
+    type: button
+  solo_5:
+    channel: 4
+    function: 49
+    high: 127
+    low: 0
+    type: button
+  solo_6:
+    channel: 5
+    function: 49
+    high: 127
+    low: 0
+    type: button
+  solo_7:
+    channel: 6
+    function: 49
+    high: 127
+    low: 0
+    type: button
+  solo_8:
+    channel: 7
+    function: 49
+    high: 127
+    low: 0
+    type: button
+  stop:
+    channel: 0
+    function: 92
+    high: 127
+    low: 0
+    type: button
+  stop_all:
+    channel: 0
+    function: 81
+    high: 127
+    low: 0
+    type: button
+  tap_tempo:
+    channel: 0
+    function: 99
+    high: 127
+    low: 0
+    type: button
+  tc_1:
+    channel: 0
+    function: 48
+    high: 127
+    low: 0
+    type: fader
+  tc_2:
+    channel: 0
+    function: 49
+    high: 127
+    low: 0
+    type: fader
+  tc_3:
+    channel: 0
+    function: 50
+    high: 127
+    low: 0
+    type: fader
+  tc_4:
+    channel: 0
+    function: 51
+    high: 127
+    low: 0
+    type: fader
+  tc_5:
+    channel: 0
+    function: 52
+    high: 127
+    low: 0
+    type: fader
+  tc_6:
+    channel: 0
+    function: 53
+    high: 127
+    low: 0
+    type: fader
+  tc_7:
+    channel: 0
+    function: 54
+    high: 127
+    low: 0
+    type: fader
+  tc_8:
+    channel: 0
+    function: 55
+    high: 127
+    low: 0
+    type: fader
+  ts_1:
+    channel: 0
+    function: 16
+    high: 127
+    low: 0
+    type: fader
+  ts_2:
+    channel: 1
+    function: 16
+    high: 127
+    low: 0
+    type: fader
+  ts_3:
+    channel: 2
+    function: 16
+    high: 127
+    low: 0
+    type: fader
+  ts_4:
+    channel: 3
+    function: 16
+    high: 127
+    low: 0
+    type: fader
+  ts_5:
+    channel: 4
+    function: 16
+    high: 127
+    low: 0
+    type: fader
+  ts_6:
+    channel: 5
+    function: 16
+    high: 127
+    low: 0
+    type: fader
+  ts_7:
+    channel: 6
+    function: 16
+    high: 127
+    low: 0
+    type: fader
+  ts_8:
+    channel: 7
+    function: 16
+    high: 127
+    low: 0
+    type: fader
+regex: Akai APC40:Akai APC40

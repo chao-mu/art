@@ -1,0 +1,248 @@
+mappings:
+  cycle:
+    channel: 0
+    function: 86
+    high: 127
+    low: 0
+    type: button
+  e1:
+    channel: 0
+    function: 16
+    high: 127
+    low: 0
+    type: fader
+  e2:
+    channel: 0
+    function: 17
+    high: 127
+    low: 0
+    type: fader
+  e3:
+    channel: 0
+    function: 18
+    high: 127
+    low: 0
+    type: fader
+  e4:
+    channel: 0
+    function: 19
+    high: 127
+    low: 0
+    type: fader
+  e5:
+    channel: 0
+    function: 20
+    high: 127
+    low: 0
+    type: fader
+  e6:
+    channel: 0
+    function: 21
+    high: 127
+    low: 0
+    type: fader
+  e7:
+    channel: 0
+    function: 22
+    high: 127
+    low: 0
+    type: fader
+  e8:
+    channel: 0
+    function: 23
+    high: 127
+    low: 0
+    type: fader
+  e9:
+    channel: 0
+    function: 12
+    high: 127
+    low: 0
+    type: fader
+  f1:
+    channel: 0
+    function: 13
+    high: 127
+    low: 0
+    type: fader
+  f1_bottom_btn:
+    channel: 0
+    function: 8
+    high: 127
+    low: 0
+    type: button
+  f1_top_btn:
+    channel: 0
+    function: 16
+    high: 127
+    low: 0
+    type: button
+  f2:
+    channel: 1
+    function: 13
+    high: 127
+    low: 0
+    type: fader
+  f2_bottom_btn:
+    channel: 0
+    function: 9
+    high: 127
+    low: 0
+    type: button
+  f2_top_btn:
+    channel: 0
+    function: 17
+    high: 127
+    low: 0
+    type: button
+  f3:
+    channel: 2
+    function: 13
+    high: 127
+    low: 0
+    type: fader
+  f3_bottom_btn:
+    channel: 0
+    function: 10
+    high: 127
+    low: 0
+    type: button
+  f3_top_btn:
+    channel: 0
+    function: 18
+    high: 127
+    low: 0
+    type: button
+  f4:
+    channel: 3
+    function: 13
+    high: 127
+    low: 0
+    type: fader
+  f4_bottom_btn:
+    channel: 0
+    function: 11
+    high: 127
+    low: 0
+    type: button
+  f4_top_btn:
+    channel: 0
+    function: 19
+    high: 127
+    low: 0
+    type: button
+  f5:
+    channel: 4
+    function: 13
+    high: 127
+    low: 0
+    type: fader
+  f5_bottom_btn:
+    channel: 0
+    function: 12
+    high: 127
+    low: 0
+    type: button
+  f5_top_btn:
+    channel: 0
+    function: 20
+    high: 127
+    low: 0
+    type: button
+  f6:
+    channel: 5
+    function: 13
+    high: 127
+    low: 0
+    type: fader
+  f6_bottom_btn:
+    channel: 0
+    function: 13
+    high: 127
+    low: 0
+    type: button
+  f6_top_btn:
+    channel: 0
+    function: 21
+    high: 127
+    low: 0
+    type: button
+  f7:
+    channel: 6
+    function: 13
+    high: 127
+    low: 0
+    type: fader
+  f7_bottom_btn:
+    channel: 0
+    function: 14
+    high: 127
+    low: 0
+    type: button
+  f7_top_btn:
+    channel: 0
+    function: 22
+    high: 127
+    low: 0
+    type: button
+  f8_bottom_btn:
+    channel: 0
+    function: 15
+    high: 127
+    low: 0
+    type: button
+  f8_top_btn:
+    channel: 0
+    function: 23
+    high: 127
+    low: 0
+    type: button
+  f9:
+    channel: 8
+    function: 13
+    high: 127
+    low: 0
+    type: fader
+  f9_bottom_btn:
+    channel: 0
+    function: 49
+    high: 127
+    low: 0
+    type: button
+  f9_top_btn:
+    channel: 0
+    function: 48
+    high: 127
+    low: 0
+    type: button
+  forward:
+    channel: 0
+    function: 92
+    high: 127
+    low: 0
+    type: button
+  play:
+    channel: 0
+    function: 94
+    high: 127
+    low: 0
+    type: button
+  record:
+    channel: 0
+    function: 95
+    high: 127
+    low: 0
+    type: button
+  rewind:
+    channel: 0
+    function: 91
+    high: 127
+    low: 0
+    type: button
+  stop:
+    channel: 0
+    function: 93
+    high: 127
+    low: 0
+    type: button
+regex: iCON iControls .* MIDI 1
