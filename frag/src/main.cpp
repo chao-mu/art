@@ -276,6 +276,7 @@ int main(int argc, const char** argv) {
         for (const auto& cmd : commands) {
             std::optional<frag::Value> val_opt = store->getValue(cmd->getTrigger());
             if (val_opt.has_value() && val_opt.value().getBool()) {
+                std::cout << cmd->getTrigger().toString() << " -> " << cmd->getName() << std::endl;
                 cmd->run(store);
             }
         }

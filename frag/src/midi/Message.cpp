@@ -17,6 +17,14 @@ namespace frag {
             return MESSAGE_TYPE_UNKNOWN;
         }
 
+        std::string Message::toString() {
+            return "Message(channel=" + std::to_string(static_cast<int>(getChannel())) +
+                ", note=" + std::to_string(static_cast<int>(getNote())) +
+                ", value=" + std::to_string(static_cast<int>(getValue())) +
+                ", type=" + std::to_string(static_cast<int>(getType())) +
+                ")";
+        }
+
         unsigned char Message::getChannel() {
             return message_[0] & 0x0f;
 

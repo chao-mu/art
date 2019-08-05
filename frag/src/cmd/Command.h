@@ -16,6 +16,7 @@ namespace frag {
                 virtual void validate() const = 0;
 
                 Address getTrigger() const;
+                std::string getName() const;
 
             protected:
                 void throwIncompatible() const;

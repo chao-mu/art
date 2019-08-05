@@ -21,6 +21,7 @@
 #define KEY_INDEX "index"
 #define KEY_COMMANDS "commands"
 #define KEY_COMMAND "command"
+#define KEY_TRIGGER_AND_ARGS "trigger-and-args"
 #define KEY_TRIGGER "trigger"
 #define KEY_MEDIAS "media"
 #define KEY_GROUPS "groups"
@@ -50,9 +51,9 @@ namespace frag {
         const YAML::Node patch = YAML::LoadFile(path_);
 
         parseMedia(patch);
+        parseGroups(patch);
         parseControllers(patch);
         parseModules(patch);
-        parseGroups(patch);
         parseCommands(patch);
     }
 
@@ -80,6 +81,26 @@ namespace frag {
         return commands_;
     }
 
+    std::shared_ptr<cmd::Command> PatchParser::loadCommand(int num, const std::string& name, Address trigger, std::vector<AddressOrValue> args) {
+        std::shared_ptr<cmd::Command> command;
+        if (name == "reverse") {
+            command = std::make_shared<cmd::Reverse>(name, trigger, args);
+        } else if (name == "overwrite") {
+            command = std::make_shared<cmd::Overwrite>(name, trigger, args);
+        } else if (name == "rotate") {
+            command = std::make_shared<cmd::Rotate>(name, trigger, args);
+        } else {
+            throw std::runtime_error(
+                    "command #" + std::to_string(num) + " has unrecognized command name '" +
+                    name + "'");
+        }
+
+
+        command->validate();
+
+        return command;
+    }
+
     void PatchParser::parseCommands(const YAML::Node& patch) {
         if (!patch[KEY_COMMANDS]) {
             return;
@@ -88,42 +109,44 @@ namespace frag {
         int i = 0;
         for (const auto& settings : patch[KEY_COMMANDS]) {
             i++;
+
             std::string command_name = requireNode(
                 settings,
                 KEY_COMMAND,
                 "expected command #" + std::to_string(i) + " to have key '" + KEY_COMMAND + "'"
             ).as<std::string>();
 
-            Address trigger = requireAddress(
-                settings,
-                KEY_TRIGGER,
-                "expected command #" + std::to_string(i) + " to have key '" + KEY_TRIGGER + "'"
-            );
+            if (settings[KEY_TRIGGER_AND_ARGS]) {
+                for (const auto& trig_args : settings[KEY_TRIGGER_AND_ARGS]) {
+                    Address trigger;
+                    std::vector<AddressOrValue> args;
+                    int j = 0;
+                    for (const auto& arg : trig_args) {
+                        if (j++ == 0) {
+                            trigger = readAddress(arg);
+                        } else {
+                            args.push_back(readAddressOrValue(arg));
+                        }
+                    }
 
-            std::vector<AddressOrValue> args;
-            if (settings[KEY_ARGS]) {
-                for (const auto& arg : settings[KEY_ARGS]) {
-                    args.push_back(readAddressOrValue(arg));
+                    commands_.push_back(loadCommand(i, command_name, trigger, args));
                 }
-            }
-
-            std::shared_ptr<cmd::Command> command;
-            if (command_name == "reverse") {
-                command = std::make_shared<cmd::Reverse>(command_name, trigger, args);
-            } else if (command_name == "overwrite") {
-                command = std::make_shared<cmd::Overwrite>(command_name, trigger, args);
-            } else if (command_name == "rotate") {
-                command = std::make_shared<cmd::Rotate>(command_name, trigger, args);
             } else {
-                throw std::runtime_error(
-                        "command #" + std::to_string(i) + " has unrecognized command name '" +
-                        command_name + "'");
+                Address trigger = requireAddress(
+                    settings,
+                    KEY_TRIGGER,
+                    "expected command #" + std::to_string(i) + " to have key '" + KEY_TRIGGER + "'"
+                );
+
+                std::vector<AddressOrValue> args;
+                if (settings[KEY_ARGS]) {
+                    for (const auto& arg : settings[KEY_ARGS]) {
+                        args.push_back(readAddressOrValue(arg));
+                    }
+                }
+
+                commands_.push_back(loadCommand(i, command_name, trigger, args));
             }
-
-
-            command->validate();
-
-            commands_.push_back(command);
         }
     }
 
@@ -334,9 +357,13 @@ namespace frag {
         std::string swiz;
         if (tokens.size() > 1) {
             std::regex nonswiz_re("[^xyzwrgb]");
-
             if (!regex_search(tokens.back(), nonswiz_re)) {
-                swiz = tokens.back();
+                Address no_swiz_addr(tokens);
+
+                if (store_->getGroup(no_swiz_addr.withoutTail()) == nullptr) {
+                    swiz = tokens.back();
+                    tokens.pop_back();
+                }
             }
         }
 

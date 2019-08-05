@@ -123,6 +123,7 @@ namespace frag {
 
             values_[addr + "release"] = Value(last_pressed && !c.isPressed());
             values_[addr + "press"] = Value(!last_pressed && c.isPressed());
+            values_[addr] = Value(static_cast<float>(c.value) >= 0.5 ? true : false);
         } else {
             values_[addr] = Value(remap(c.value, c.low, c.high, 0, 1));
         }

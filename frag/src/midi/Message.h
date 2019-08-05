@@ -3,6 +3,7 @@
 
 // STL
 #include <vector>
+#include <string>
 
 namespace frag {
     namespace midi {
@@ -22,6 +23,7 @@ namespace frag {
                 unsigned char getNote();
                 unsigned char getValue();
                 unsigned char getChannel();
+                std::string toString();
 
             private:
                 std::vector<unsigned char> message_;

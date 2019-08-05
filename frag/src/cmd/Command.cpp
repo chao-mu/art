@@ -12,6 +12,10 @@ namespace frag {
                     "Command '" + name_ + "' is incompatible with target '" + target_.toString() + "'");
         }
 
+        std::string Command::getName() const {
+            return name_;
+        }
+
         Address Command::getTrigger() const {
             return trigger_;
         }

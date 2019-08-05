@@ -37,11 +37,10 @@ namespace frag {
             Resolution getResolution() const;
 
         private:
-            static AddressOrValue readAddressOrValue(const YAML::Node& node);
-            static Address readAddress(const YAML::Node& node);
-            static const YAML::Node requireNode(const YAML::Node& parent, const std::string& key, const std::string& err);
-            static Address requireAddress(const YAML::Node& parent, const std::string& key, const std::string& err);
-
+            AddressOrValue readAddressOrValue(const YAML::Node& node);
+            Address readAddress(const YAML::Node& node);
+            const YAML::Node requireNode(const YAML::Node& parent, const std::string& key, const std::string& err);
+            Address requireAddress(const YAML::Node& parent, const std::string& key, const std::string& err);
 
             void parseMedia(const YAML::Node& patch);
             void parseCommands(const YAML::Node& patch);
@@ -52,6 +51,7 @@ namespace frag {
             std::shared_ptr<Texture> loadImage(const std::string& name, const std::string& path, const YAML::Node& settings) const;
             std::shared_ptr<Video> loadVideo(const std::string& name, const std::string& path, const YAML::Node& settings) const;
             std::shared_ptr<midi::Device> loadMidiDevice(const std::string& name, const YAML::Node& settings) const;
+            std::shared_ptr<cmd::Command> loadCommand(int num, const std::string& name, Address trigger, std::vector<AddressOrValue> args);
 
             const std::string path_;
             std::shared_ptr<ValueStore> store_;
