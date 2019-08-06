@@ -7,6 +7,7 @@
 #include <thread>
 #include <chrono>
 #include <string>
+#include <condition_variable>
 
 // OpenCV
 #include <opencv2/opencv.hpp>
@@ -43,6 +44,7 @@ namespace frag {
             void next();
             void seek(int pos);
             std::pair<int, std::shared_ptr<cv::Mat>> readFrame();
+            void signalWork();
 
             // Constructor Parameters
             const std::string path_;
@@ -51,7 +53,7 @@ namespace frag {
             bool auto_reset_;
             Playback playback_;
 
-            std::chrono::high_resolution_clock::time_point last_update_;
+            std::optional<std::chrono::high_resolution_clock::time_point> last_update_;
             std::mutex buffer_mutex_;
             std::unique_ptr<cv::VideoCapture> vid_;
             std::thread thread_;
@@ -65,6 +67,10 @@ namespace frag {
 
             int cursor_;
             std::vector<std::pair<int, std::shared_ptr<cv::Mat>>> buffer_;
+
+            bool work_ready_ = false;
+            std::mutex work_ready_mutex_;
+            std::condition_variable work_ready_cv_;
     };
 }
 

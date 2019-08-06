@@ -6,7 +6,10 @@
 // Ours
 #include "fileutil.h"
 
-#define SLEEP_FOR_MS 16
+// #include "debug.h"
+// #define debug_time true
+
+#define WORK_THRESHOLD 3
 
 namespace frag {
     /*
@@ -24,6 +27,14 @@ namespace frag {
 
     void Video::outFocus() {
         requested_reset_ = auto_reset_;
+        last_update_.reset();
+        signalWork();
+    }
+
+    void Video::signalWork() {
+        std::lock_guard lk(work_ready_mutex_);
+        work_ready_ = true;
+        work_ready_cv_.notify_one();
     }
 
     void Video::update() {
@@ -32,10 +43,17 @@ namespace frag {
         std::chrono::high_resolution_clock::time_point now =
             std::chrono::high_resolution_clock::now();
 
-        std::chrono::duration<float> duration = now - last_update_;
+        if (last_update_.has_value()) {
+            std::chrono::duration<float> duration = now - last_update_.value();
 
-        if (duration.count() < 1 / fps_) {
-            return;
+            float frame_dur = 1 / static_cast<float>(fps_);
+            // The amount we are past the next time we should display a frame
+            float past_target = duration.count() - frame_dur;
+            if (past_target < 0) {
+                return;
+            } else if (past_target > frame_dur) {
+                std::cerr << "WARNING: Skipped a frame! Since last frame " << past_target << "ms has traspired in " << path_ << std::endl;
+            }
         }
 
         std::lock_guard guard(buffer_mutex_);
@@ -62,8 +80,16 @@ namespace frag {
 
         if (reverse_) {
             cursor_--;
+
+            if (static_cast<float>(buffer_size_) * 0.5  - cursor_ > WORK_THRESHOLD) {
+                signalWork();
+            }
         } else {
             cursor_++;
+
+            if (cursor_ - static_cast<float>(buffer_size_) * 0.5 > WORK_THRESHOLD) {
+                signalWork();
+            }
         }
 
         last_update_ = std::chrono::high_resolution_clock::now();
@@ -145,6 +171,8 @@ namespace frag {
             return;
         }
 
+        // Calculate current distance from center.
+        // Overshooting and undershooting are non-issues.
         int diff, front_pos, back_pos;
         {
             std::lock_guard guard(buffer_mutex_);
@@ -256,10 +284,26 @@ namespace frag {
         next();
 
         running_ = true;
-        thread_ = std::thread([this]{
+        thread_ = std::thread([this] {
+            //DEBUG_TIME_DECLARE(work_wait)
             while (running_.load()) {
-                std::this_thread::sleep_for(std::chrono::milliseconds(SLEEP_FOR_MS));
+                {
+                    //DEBUG_TIME_START(work_wait)
+                    std::unique_lock<std::mutex> lk(work_ready_mutex_);
+                    work_ready_cv_.wait(lk, [this]{return work_ready_ || !running_.load();});
+                    //DEBUG_TIME_END(work_wait)
+                }
+
+                if (!running_.load()) {
+                    break;
+                }
+
                 next();
+
+                {
+                    std::lock_guard lk(work_ready_mutex_);
+                    work_ready_ = false;
+                }
             }
         });
     }
@@ -274,6 +318,10 @@ namespace frag {
 
     void Video::stop() {
         running_ = false;
+        {
+            std::lock_guard guard(work_ready_mutex_);
+            work_ready_cv_.notify_one();
+        }
         if (thread_.joinable()) {
             thread_.join();
         }
