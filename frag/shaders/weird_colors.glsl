@@ -1,14 +1,13 @@
 #version 410
 
-layout (location = 0) out vec4 FragColor;
+out vec4 o;
 
-// Image
+#pragma channel vec3 master
 #pragma channel vec3 img0
+#pragma channel float mix_1 0
+#pragma channel float mix_2 0
 
-uniform bool negate = false;
-
-// width and height of image
-uniform vec2 iResolution;
+#pragma include include/ColorSpaces.inc.glsl
 
 uniform float iTime;
 
@@ -41,7 +40,29 @@ vec3 applyKernel(mat3 m) {
         1, 1, 1 \
     )
 
+
+vec3 effect_1(vec3 rgb) {
+    vec3 hsv = rgb_to_hsv(rgb);
+    return mix(rgb, hsv_to_rgb(abs(vec3(0., 1, 1) - hsv)), -2);
+}
+
+vec3 effect_2(vec3 rgb) {
+    vec3 hsv = rgb_to_hsv(rgb);
+    hsv.z = abs(sin(hsv.z * 10));
+    hsv.x = abs(sin(hsv.x * 10 + iTime));
+
+    return hsv_to_rgb(hsv);
+}
+
+vec3 effect_3(vec3 rgb) {
+    rgb += sin(rgb * 19);
+    return rgb;
+}
+
 void main() {
-    vec3 blur = applyKernel(KERNEL_BOX_BLUR).rgb / 9;
-    FragColor.rgba = vec4(blur, 1);
+    vec3 rgb = channel_img0();
+    vec3 blur = applyKernel(KERNEL_BOX_BLUR).rgb / .9;
+    o.rgb = mix(channel_master(), effect_1(rgb), channel_mix_1());
+    o.rgb = mix(o.rgb, effect_2(o.rgb), channel_mix_2());
+    o.rgb = blur;
 }

@@ -8,6 +8,7 @@ layout (location = 0) out vec4 o;
 #pragma channel float mix_bars 0
 #pragma channel float mix_lumin_a 0
 #pragma channel float mix_lumin_b 0
+#pragma channel float mix_diff 0
 
 #pragma include include/ColorSpaces.inc.glsl
 
@@ -24,6 +25,10 @@ float noise(float x) {
     float f = fract(x);
 
     return mix(rand(i), rand(i + 1), f);
+}
+
+vec3 mix_diff(vec3 a, vec3 b, float m) {
+    return mix(a, abs(a - b), m);
 }
 
 vec3 mix_bars(vec3 a, vec3 b, float m) {
@@ -44,6 +49,7 @@ void main() {
     o.rgb = mix_lumin(a, b, channel_mix_lumin_a());
     o.rgb = mix_lumin(b, o.rgb, 1 - channel_mix_lumin_b());
     o.rgb = mix_bars(o.rgb, b, channel_mix_bars());
+    o.rgb = mix_diff(o.rgb, b, channel_mix_diff());
     o.rgb = mix(o.rgb, b, channel_mix_fade());
     
     o.a = 1;
